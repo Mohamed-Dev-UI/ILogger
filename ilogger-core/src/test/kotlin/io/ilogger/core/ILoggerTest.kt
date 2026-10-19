@@ -224,7 +224,13 @@ class ILoggerTest {
             sink(sink)
         }
         repeat(25) { log.recordNow(action = "g.h") }
-        log.flush()
+        // flush() is a request, not a completion barrier: the buffered worker
+        // drains on a real thread (not under this runTest's virtual scheduler),
+        // so poll until the sink holds all 25 events.
+        val deadline = System.currentTimeMillis() + 5_000
+        while (sink.events.size < 25 && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
+        }
         assertEquals(25, sink.events.size)
         log.close()
     }
