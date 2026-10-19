@@ -1,0 +1,25 @@
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
+    application
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+dependencies {
+    api(project(":ilogger-annotations"))
+    api(project(":ilogger-core"))
+    api(project(":ilogger-room"))
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.sqlite.bundled)
+
+    // Two processors on one module: Room codegen + ilogger instrumentation.
+    ksp(project(":ilogger-ksp"))
+    ksp(libs.room.compiler)
+}
+
+application {
+    mainClass = "example.room.MainKt"
+}

@@ -1,0 +1,84 @@
+# ILogger continuous integration.
+#
+# Two jobs:
+#  - jvm:     every multiplatform-clean library module, the KSP processor
+#             behavior tests, the negative-diagnostics fixtures, all five JVM
+#             examples, the benchmark module, and a publish smoke run.
+#  - android: the Compose demo app (needs the Android SDK; AGP auto-downloads
+#             compileSdk 37 platform/build-tools with accepted licenses).
+#
+# :app is intentionally NOT part of the jvm job — no Android SDK there.
+
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jvm:
+    name: JVM — build, test, publish smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17 (matches jvmToolchain; no extra download)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Build & test all JVM modules
+        run: >
+          ./gradlew
+          :ilogger-annotations:build
+          :ilogger-core:build
+          :ilogger-ksp:build
+          :ilogger-testing:build
+          :ilogger-room:build
+          :ilogger-serialization:build
+          :ilogger-ktor:build
+          :ksp-tests:test
+          :ksp-diagnostics:test
+          :examples:basic:build
+          :examples:room:build
+          :examples:custom-sink:build
+          :examples:server:build
+          :examples:advanced-audit:build
+          :benchmark:build
+
+      - name: Publish smoke (all artifacts to Maven Local)
+        run: ./gradlew publishToMavenLocal
+
+  android:
+    name: Android — assembleDebug
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug

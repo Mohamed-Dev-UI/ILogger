@@ -1,0 +1,15 @@
+# Normalize all text by default; keep specific scripts/binary types exact.
+* text=auto
+
+# Gradle wrapper scripts: LF for Linux/macOS (incl. CI), CRLF for batch.
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# Binary artifacts
+*.jar binary
+*.png binary
+*.gif binary
+*.webp binary
+*.apk binary
+*.jks binary
+*.keystore binary

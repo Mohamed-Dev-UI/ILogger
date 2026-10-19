@@ -1,0 +1,26 @@
+# ── Gradle ────────────────────────────────────────────────────────────────
+.gradle/
+# every module's build output (root and subprojects)
+build/
+
+# ── IDE ───────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+
+# ── Android ───────────────────────────────────────────────────────────────
+captures/
+.externalNativeBuild/
+.cxx/
+# machine-specific SDK path — never commit
+local.properties
+
+# ── Kotlin/KSP local state ────────────────────────────────────────────────
+.kotlin/
+
+# ── OS noise ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── misc ──────────────────────────────────────────────────────────────────
+*.log
+*.hprof
