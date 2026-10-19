@@ -11,7 +11,7 @@ plugins {
 // Shared project identity. The group is the Maven Central namespace,
 // verified at central.sonatype.com under the GitHub account Mohamed-Dev-UI.
 allprojects {
-    group = "io.github.Mohamed-Dev-UI"
+    group = "io.github.mohamed-dev-ui"
     version = "0.1.0"
 }
 

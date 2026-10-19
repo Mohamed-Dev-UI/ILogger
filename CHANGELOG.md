@@ -10,10 +10,10 @@ remain stable within a major version.
 ### Changed
 
 - **Publishing moved to Maven Central** via the vanniktech Maven Publish
-  plugin (0.37.0) — published group is now **`io.github.Mohamed-Dev-UI`**
+  plugin (0.37.0) — published group is now **`io.github.mohamed-dev-ui`**
   (the Central Portal namespace verified under the GitHub account; the old
   `io.ilogger` group was never verified and is unusable on Central).
-  Version catalogs now resolve `io.github.Mohamed-Dev-UI:<module>:<version>`.
+  Version catalogs now resolve `io.github.mohamed-dev-ui:<module>:<version>`.
   Documentation snippets updated accordingly.
 
 ### Added
