@@ -1,0 +1,146 @@
+# Release pipeline — triggered by pushing a version tag:
+#
+#     git tag -a v0.1.0 -m "..." && git push origin v0.1.0
+#
+# Pipeline:
+#   1. jvm     — full JVM build & test, publish all ilogger-* artifacts to
+#                GitHub Packages (maven.pkg.github.com), collect the jars.
+#   2. android — assemble the debug demo APK.
+#   3. release — create the GitHub release with generated notes and attach
+#                every library jar + the demo APK.
+#
+# GitHub Packages publication needs `packages: write`; the release steps need
+# `contents: write` (both are declared at workflow level).
+
+name: Release
+
+on:
+  push:
+    tags: [ "v*" ]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  jvm:
+    name: JVM — test, publish to GitHub Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Build & test all JVM modules
+        run: >
+          ./gradlew
+          :ilogger-annotations:build
+          :ilogger-core:build
+          :ilogger-ksp:build
+          :ilogger-testing:build
+          :ilogger-room:build
+          :ilogger-serialization:build
+          :ilogger-ktor:build
+          :ksp-tests:test
+          :ksp-diagnostics:test
+          :examples:basic:build
+          :examples:room:build
+          :examples:custom-sink:build
+          :examples:server:build
+          :examples:advanced-audit:build
+          :benchmark:build
+
+      - name: Publish ilogger-* artifacts to GitHub Packages
+        run: ./gradlew publish
+
+      - name: Collect library jars
+        if: always()
+        run: |
+          mkdir -p dist
+          find ilogger-*/build/libs -name '*.jar' -exec cp {} dist/ \;
+          ls -la dist
+
+      - name: Upload jars artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maven-jars
+          path: dist/*.jar
+          if-no-files-found: error
+
+  android:
+    name: Android — assembleDebug APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      - name: Assemble debug APK
+        run: ./gradlew :app:assembleDebug
+
+      - name: Collect demo APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/debug/app-debug.apk dist/ILogger-demo-debug.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-apk
+          path: dist/ILogger-demo-debug.apk
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: [jvm, android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download library jars
+        uses: actions/download-artifact@v4
+        with:
+          name: maven-jars
+          path: maven-jars
+
+      - name: Download demo APK
+        uses: actions/download-artifact@v4
+        with:
+          name: demo-apk
+          path: demo-apk
+
+      - name: Create release and attach artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "ILogger $GITHUB_REF_NAME" \
+            --generate-notes
+          gh release upload "$GITHUB_REF_NAME" \
+            maven-jars/* demo-apk/* \
+            --clobber

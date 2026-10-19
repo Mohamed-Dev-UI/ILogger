@@ -69,6 +69,23 @@ Full tour: [docs/01-overview.md](docs/01-overview.md) and
 follows; every runtime claim below is exercised by a runnable example in
 `examples/*`.
 
+## CI & releases
+
+- **CI** (`.github/workflows/ci.yml`) runs on every push to `main` and every
+  pull request: all JVM modules build & test (libraries, KSP behavior tests,
+  negative diagnostics, examples, benchmark) plus the Android demo APK, and
+  a `publishToMavenLocal` smoke run.
+- **Release** (`.github/workflows/release.yml`) runs when a `v*` tag is
+  pushed. It runs the JVM suite, publishes every `ilogger-*` artifact to
+  [GitHub Packages](https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger)
+  (`io.ilogger:<module>:<version>`), assembles the demo APK, and attaches all
+  jars + APK to a GitHub release with generated notes:
+
+  ```bash
+  git tag -a v0.1.1 -m "ILogger v0.1.1"
+  git push origin v0.1.1
+  ```
+
 ## Documentation (25 topics)
 
 | # | Topic | # | Topic |

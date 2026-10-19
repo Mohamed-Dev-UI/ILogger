@@ -40,7 +40,7 @@ subprojects {
                                 else -> "ILogger integration: $moduleName"
                             },
                         )
-                        url.set("https://github.com/mohamed-dev/ilogger")
+                        url.set("https://github.com/Mohamed-Dev-UI/ILogger")
                         licenses {
                             license {
                                 name.set("Apache License, Version 2.0")
@@ -49,15 +49,35 @@ subprojects {
                             }
                         }
                         scm {
-                            url.set("https://github.com/mohamed-dev/ilogger")
-                            connection.set("scm:git:https://github.com/mohamed-dev/ilogger.git")
-                            developerConnection.set("scm:git:https://github.com/mohamed-dev/ilogger.git")
+                            url.set("https://github.com/Mohamed-Dev-UI/ILogger")
+                            connection.set("scm:git:https://github.com/Mohamed-Dev-UI/ILogger.git")
+                            developerConnection.set("scm:git:https://github.com/Mohamed-Dev-UI/ILogger.git")
                         }
                         developers {
                             developer {
-                                id.set("mohamed-dev")
+                                id.set("Mohamed-Dev-UI")
                                 name.set("Mohamed")
-                                url.set("https://github.com/mohamed-dev")
+                                url.set("https://github.com/Mohamed-Dev-UI")
+                            }
+                        }
+                    }
+                }
+
+                // GitHub Packages is registered only inside GitHub Actions (the
+                // env vars exist there), so local builds never touch a remote.
+                // Workflow grants GITHUB_TOKEN `packages: write`; artifacts land
+                // under https://maven.pkg.github.com/<owner>/<repo>.
+                val ghActor = providers.environmentVariable("GITHUB_ACTOR").orNull
+                val ghToken = providers.environmentVariable("GITHUB_TOKEN").orNull
+                val ghRepo = providers.environmentVariable("GITHUB_REPOSITORY").orNull
+                if (ghActor != null && ghToken != null && ghRepo != null) {
+                    repositories {
+                        maven {
+                            name = "GitHubPackages"
+                            url = uri("https://maven.pkg.github.com/$ghRepo")
+                            credentials {
+                                username = ghActor
+                                password = ghToken
                             }
                         }
                     }
