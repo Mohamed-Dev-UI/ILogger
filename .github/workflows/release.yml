@@ -65,7 +65,9 @@ jobs:
           :benchmark:build
 
       - name: Publish to GitHub Packages (env-gated)
-        run: ./gradlew publish
+        # Target-specific publishing: the generic `publish` task now also
+        # belongs to the Central pipeline and would require Central creds here.
+        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
 
       - name: Publish + release to Maven Central
         env:
