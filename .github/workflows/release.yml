@@ -67,6 +67,10 @@ jobs:
       - name: Publish to GitHub Packages (env-gated)
         # Target-specific publishing: the generic `publish` task now also
         # belongs to the Central pipeline and would require Central creds here.
+        # GITHUB_TOKEN must be mapped explicitly — secrets are not auto-exported
+        # to process env vars and the gradle script gates the repository on it.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
 
       - name: Publish + release to Maven Central
