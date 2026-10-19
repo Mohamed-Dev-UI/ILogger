@@ -85,6 +85,7 @@ follows; every runtime claim below is exercised by a runnable example in
   git tag -a v0.1.1 -m "ILogger v0.1.1"
   git push origin v0.1.1
   ```
+- **Changelog** lives in [CHANGELOG.md](CHANGELOG.md).
 
 ## Documentation (25 topics)
 
