@@ -69,6 +69,12 @@ jobs:
         # belongs to the Central pipeline and would require Central creds here.
         # GITHUB_TOKEN must be mapped explicitly — secrets are not auto-exported
         # to process env vars and the gradle script gates the repository on it.
+        #
+        # continue-on-error: GitHub Packages rejects re-publishing an identical
+        # version (v* tag re-runs hit this after the first successful upload).
+        # Central + the release-page jars remain the sources of truth, so a
+        # duplicate rejection must not fail the release.
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
