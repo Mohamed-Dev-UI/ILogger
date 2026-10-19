@@ -86,6 +86,25 @@ follows; every runtime claim below is exercised by a runnable example in
   git push origin v0.1.1
   ```
 - **Changelog** lives in [CHANGELOG.md](CHANGELOG.md).
+- **Consuming artifacts from GitHub Packages** (requires a GitHub token —
+  Packages are always authenticated):
+
+  ```kotlin
+  repositories {
+      mavenCentral()
+      maven {
+          name = "GitHubPackages"
+          url = uri("https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger")
+          credentials {
+              username = "<github-user>"
+              password = "<personal-access-token>"
+          }
+      }
+  }
+  ```
+
+  Prefer no credentials? The same jars are attached to every GitHub release:
+  [releases/tag/v0.1.0](https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v0.1.0).
 
 ## Documentation (25 topics)
 
