@@ -14,9 +14,9 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 [libraries]
-ilogger-annotations = { group = "io.ilogger", name = "ilogger-annotations", version = "0.1.0" }
-ilogger-core = { group = "io.ilogger", name = "ilogger-core", version = "0.1.0" }
-ilogger-ksp = { group = "io.ilogger", name = "ilogger-ksp", version = "0.1.0" }
+ilogger-annotations = { group = "io.github.Mohamed-Dev-UI", name = "ilogger-annotations", version = "0.1.0" }
+ilogger-core = { group = "io.github.Mohamed-Dev-UI", name = "ilogger-core", version = "0.1.0" }
+ilogger-ksp = { group = "io.github.Mohamed-Dev-UI", name = "ilogger-ksp", version = "0.1.0" }
 ```
 
 ```kotlin

@@ -5,6 +5,25 @@ All notable changes to ILogger. Format follows
 [SemVer](https://semver.org/) — the Kotlin DSL surface and artifact layout
 remain stable within a major version.
 
+## Unreleased
+
+### Changed
+
+- **Publishing moved to Maven Central** via the vanniktech Maven Publish
+  plugin (0.37.0) — published group is now **`io.github.Mohamed-Dev-UI`**
+  (the Central Portal namespace verified under the GitHub account; the old
+  `io.ilogger` group was never verified and is unusable on Central).
+  Version catalogs now resolve `io.github.Mohamed-Dev-UI:<module>:<version>`.
+  Documentation snippets updated accordingly.
+
+### Added
+
+- Release workflow now uploads to Maven Central
+  (`publishAndReleaseToMavenCentral`, automatic release after Central
+  validation) in addition to GitHub Packages and the release-page jars;
+  Maven Central requires GPG-signed artifacts, driven by the
+  `MAVEN_CENTRAL_USERNAME/PASSWORD/SIGNING_KEY` repository secrets.
+
 ## [0.1.0] — 2026-10-19
 
 First production release.

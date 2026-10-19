@@ -64,8 +64,16 @@ jobs:
           :examples:advanced-audit:build
           :benchmark:build
 
-      - name: Publish ilogger-* artifacts to GitHub Packages
+      - name: Publish to GitHub Packages (env-gated)
         run: ./gradlew publish
+
+      - name: Publish + release to Maven Central
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew publishAndReleaseToMavenCentral
 
       - name: Collect library jars
         if: always()
@@ -138,10 +146,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }} # no checkout in this job: gh needs explicit repo context
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --verify-tag \
-            --title "ILogger $GITHUB_REF_NAME" \
-            --generate-notes
-          gh release upload "$GITHUB_REF_NAME" \
-            maven-jars/* demo-apk/* \
-            --clobber
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # re-published tag: keep the existing release, replace assets
+            gh release upload "$GITHUB_REF_NAME" \
+              maven-jars/* demo-apk/* \
+              --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "ILogger $GITHUB_REF_NAME" \
+              --generate-notes
+            gh release upload "$GITHUB_REF_NAME" \
+              maven-jars/* demo-apk/* \
+              --clobber
+          fi

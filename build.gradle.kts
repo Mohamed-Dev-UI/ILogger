@@ -8,69 +8,28 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
-// Shared project identity: one group/version for every published artifact.
+// Shared project identity. The group is the Maven Central namespace,
+// verified at central.sonatype.com under the GitHub account Mohamed-Dev-UI.
 allprojects {
-    group = "io.ilogger"
+    group = "io.github.Mohamed-Dev-UI"
     version = "0.1.0"
 }
 
 /**
- * Convention: every `ilogger-*` module publishes as `io.ilogger:<name>:<version>`
- * with the Java component (Kotlin classes + API deps). Evaluation happens per
- * module, so examples/app/benchmark are excluded by naming.
+ * Library modules publish through the com.vanniktech.maven.publish plugin
+ * (per-module `mavenPublishing { }`: Maven Central with GPG signing + the
+ * built-in GitHub Packages repository when CI env vars are present).
+ * This block registers only that env-gated GitHub Packages target, so
+ * release runs keep uploading the same artifacts there.
  */
 subprojects {
     if (name.startsWith("ilogger-")) {
-        pluginManager.apply("maven-publish")
         afterEvaluate {
-            val moduleName = name // project name, captured outside the pom receiver
-            extensions.configure<PublishingExtension> {
-                publications.register<MavenPublication>("maven") {
-                    from(components["java"])
-                    pom {
-                        name.set(moduleName)
-                        description.set(
-                            when (moduleName) {
-                                "ilogger-ksp" -> "KSP processor: annotation-driven, observable, audit-grade logging"
-                                "ilogger-annotations" -> "Compile-time annotation contracts for ILogger"
-                                "ilogger-core" -> "Framework-independent logging & audit engine"
-                                "ilogger-testing" -> "Deterministic test kit for ILogger consumers"
-                                "ilogger-room" -> "Room database lifecycle integration for ILogger"
-                                "ilogger-serialization" -> "JSON event codec for ILogger"
-                                else -> "ILogger integration: $moduleName"
-                            },
-                        )
-                        url.set("https://github.com/Mohamed-Dev-UI/ILogger")
-                        licenses {
-                            license {
-                                name.set("Apache License, Version 2.0")
-                                url.set("https://www.apache.org/licenses/LICENSE-2.0")
-                                distribution.set("repo")
-                            }
-                        }
-                        scm {
-                            url.set("https://github.com/Mohamed-Dev-UI/ILogger")
-                            connection.set("scm:git:https://github.com/Mohamed-Dev-UI/ILogger.git")
-                            developerConnection.set("scm:git:https://github.com/Mohamed-Dev-UI/ILogger.git")
-                        }
-                        developers {
-                            developer {
-                                id.set("Mohamed-Dev-UI")
-                                name.set("Mohamed")
-                                url.set("https://github.com/Mohamed-Dev-UI")
-                            }
-                        }
-                    }
-                }
-
-                // GitHub Packages is registered only inside GitHub Actions (the
-                // env vars exist there), so local builds never touch a remote.
-                // Workflow grants GITHUB_TOKEN `packages: write`; artifacts land
-                // under https://maven.pkg.github.com/<owner>/<repo>.
-                val ghActor = providers.environmentVariable("GITHUB_ACTOR").orNull
-                val ghToken = providers.environmentVariable("GITHUB_TOKEN").orNull
-                val ghRepo = providers.environmentVariable("GITHUB_REPOSITORY").orNull
-                if (ghActor != null && ghToken != null && ghRepo != null) {
+            val ghActor = providers.environmentVariable("GITHUB_ACTOR").orNull
+            val ghToken = providers.environmentVariable("GITHUB_TOKEN").orNull
+            val ghRepo = providers.environmentVariable("GITHUB_REPOSITORY").orNull
+            if (ghActor != null && ghToken != null && ghRepo != null) {
+                extensions.configure<PublishingExtension> {
                     repositories {
                         maven {
                             name = "GitHubPackages"

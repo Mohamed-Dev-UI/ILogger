@@ -52,11 +52,39 @@ priorities are, in order:
 
 ## Quick start
 
+Add the artifacts you need — published to **Maven Central**, group
+`io.github.Mohamed-Dev-UI`. In your version catalog (`gradle/libs.versions.toml`):
+
+```toml
+[versions]
+ilogger = "0.1.0"
+
+[libraries]
+ilogger-core = { module = "io.github.Mohamed-Dev-UI:ilogger-core", version.ref = "ilogger" }
+ilogger-annotations = { module = "io.github.Mohamed-Dev-UI:ilogger-annotations", version.ref = "ilogger" }
+ilogger-ksp = { module = "io.github.Mohamed-Dev-UI:ilogger-ksp", version.ref = "ilogger" }
+
+[plugins]
+ilogger-ksp = { id = "com.google.devtools.ksp", version = "2.3.12" }
+```
+
+then in `build.gradle.kts`:
+
 ```kotlin
+plugins {
+    alias(libs.plugins.ilogger.ksp)
+}
+
 dependencies {
-    implementation("io.ilogger:ilogger-annotations:0.1.0")
-    implementation("io.ilogger:ilogger-core:0.1.0")
-    ksp("io.ilogger:ilogger-ksp:0.1.0")
+    implementation(libs.ilogger.annotations)
+    implementation(libs.ilogger.core)
+    ksp(libs.ilogger.ksp)
+
+    // optional integrations:
+    // implementation(libs.ilogger.testing)
+    // implementation(libs.ilogger.room)
+    // implementation(libs.ilogger.serialization)
+    // implementation(libs.ilogger.ktor)
 }
 
 // runtime — one sink for console during development
@@ -76,10 +104,12 @@ follows; every runtime claim below is exercised by a runnable example in
   negative diagnostics, examples, benchmark) plus the Android demo APK, and
   a `publishToMavenLocal` smoke run.
 - **Release** (`.github/workflows/release.yml`) runs when a `v*` tag is
-  pushed. It runs the JVM suite, publishes every `ilogger-*` artifact to
+  pushed. It runs the JVM suite, **publishes every `ilogger-*` artifact to
+  Maven Central** (group `io.github.Mohamed-Dev-UI`, automatic release after
+  Central validation) and to
   [GitHub Packages](https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger)
-  (`io.ilogger:<module>:<version>`), assembles the demo APK, and attaches all
-  jars + APK to a GitHub release with generated notes:
+  (`io.github.Mohamed-Dev-UI:<module>:<version>`), assembles the demo APK,
+  and attaches all jars + APK to a GitHub release with generated notes:
 
   ```bash
   git tag -a v0.1.1 -m "ILogger v0.1.1"
