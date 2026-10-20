@@ -1,7 +1,7 @@
 # 19. Room integration (`ilogger-room`)
 
 Room DAOs are the canonical `@Log` host: Room 2.8.5 is KMP (JVM + Android),
-and one annotated DAO interface serves both. Integration has **two
+and one annotated DAO interface serves both. Integration has **three
 complementary layers**:
 
 ## Layer 1 — DAO instrumentation (processor-side, no extra module needed)
@@ -59,6 +59,64 @@ Events (lifecycle order, both layers in one example):
 
 `room.database.destructiveMigration` (WARN, `outcome = FAILURE`) also exists
 for destructive schema changes.
+
+## Layer 3 — store events in your own Room table (`ilogger-room`)
+
+`RoomLogSink` sends every event into the application's **own** log table (an
+external `LogEntity`): the schema, columns and indexes stay app-owned, the
+library only bridges event batches into your DAO — no reflection, no
+library-managed schema, no forced migrations.
+
+Define the entity and DAO anywhere in your Room database (do **not** annotate
+the log DAO with `@Log` — the pipeline must not feed itself):
+
+```kotlin
+@Entity(tableName = "log_events", indices = [Index("ts")])
+data class LogEntity(
+    @PrimaryKey val eventId: String,   // LogEvent.id → redelivery is idempotent
+    val ts: Long,
+    val level: String,
+    val action: String,
+    val actionVersion: Int,
+    val entity: String?,
+    val entityId: String?,
+    val actorId: String?,
+    val outcome: String,
+    val source: String?,
+    val category: String?,
+    val correlationId: String?,
+    val causationId: String?,
+    val payloadJson: String,           // full lossless event via JsonEventCodec
+)
+
+@Dao
+interface LogDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(events: List<LogEntity>)
+}
+```
+
+Wire the sink with `DispatchMode.BUFFERED` so database writes leave the hot
+path and arrive as real batches:
+
+```kotlin
+val logger = ILogger.create {
+    dispatch = DispatchMode.BUFFERED
+    batchSize = 8
+    sink(RoomLogSink { events ->
+        logDao.insertAll(events.map { it.toLogRow(JsonEventCodec.encode(it)) })
+    })
+}
+```
+
+Semantics: `writeAll` is forwarded **whole** to the lambda (one transaction
+per batch); a throwing lambda propagates to the configured `ErrorMode`
+(`REPLACE` on the event-id primary key makes retries idempotent); `flush()`/
+`close()` drain the buffered queue. The full runnable version — including the
+`CompletableDeferred` readiness gate that lets *lifecycle events* persist into
+the table they are measured on (the logger exists before `Room.build()`, the
+DAO only after) — is `examples/room`; the demo prints the `log_events` rows
+back as proof.
 
 ## Platform notes
 

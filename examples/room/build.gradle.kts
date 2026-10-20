@@ -12,6 +12,7 @@ dependencies {
     api(project(":ilogger-annotations"))
     api(project(":ilogger-core"))
     api(project(":ilogger-room"))
+    api(project(":ilogger-serialization"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.sqlite.bundled)
 

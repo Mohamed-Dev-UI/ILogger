@@ -5,6 +5,19 @@ All notable changes to ILogger. Format follows
 [SemVer](https://semver.org/) — the Kotlin DSL surface and artifact layout
 remain stable within a major version.
 
+## Unreleased
+
+### Added
+
+- `ilogger-room`: `RoomLogSink` — a batching-aware sink that stores events in
+  the application's **own** Room table (external `LogEntity`) through its DAO.
+  Schema stays app-owned; the sink forwards each engine batch in one lambda
+  call, propagates insert failures to the configured `ErrorMode`, and imports
+  no Room types itself. The Room example (`examples/room`) now persists all
+  events (DAO flows + database lifecycle) into a `log_events` table with a
+  lossless JSON payload column (`JsonEventCodec`) and demonstrates read-back
+  and retention purges.
+
 ## [0.1.0] — 2026-10-19
 
 First production release.
