@@ -61,7 +61,9 @@ Evidence (`examples/server`):
 
 `withAuditContext` merges like the core `withActor`/`withCorrelation`
 scopes: inner scopes keep winning rules; correlate with your own ids too by
-picking `actor`/tags per call.
+picking `actor`/tags per call. Without the plugin installed, the block runs
+with your `actor`/tags but **no correlation id** (the fresh-UUID path exists
+only when the plugin's `CallSetup` hook runs and no `X-Request-Id` came in).
 
 ## Authenticated actors (production guidance)
 
@@ -77,5 +79,26 @@ install(HttpAudit) {
 }
 ```
 
+Actor-extraction options compared:
+
+| Option | Source | Trust level | Cost | Verdict |
+|---|---|---|---|---|
+| `call.principal<AuthUser>()` | Auth middleware/session | Authenticated | Principal lookup | **🏆 Recommended** for real auth |
+| `X-User-Id` header (default) | Client-supplied header | Untrusted | Zero | Prototyping/internal nets only — validate or drop before logging |
+| Service-token mapping | API key → `Actor.service(id)` | Semi-trusted | One lookup | Machine callers (document the mapping) |
+
 Header extraction is the default only because it is zero-config; treat it
 exactly like an untrusted logging field.
+
+## Events reference
+
+| Hook | action | level | outcome | entityId | metadata | failure |
+|---|---|---|---|---|---|---|
+| `ResponseSent` | `http.request` | `AUDIT` | `FAILURE` if status ≥ 400 else `SUCCESS` | correlation id | `method`, `path` (no query), `status`, `durationMillis` | — |
+| `CallFailed` | `http.request` | `ERROR` | `FAILURE` | correlation id | `method`, `path` | thrown cause (structured `LogFailure`) |
+
+Notes: no `category` is set on these events (they always reach the
+catch-all); durations are wall-clock (`System.currentTimeMillis`) regardless
+of the logger's `LogClock`; `excludePaths` is consulted at response/failure
+time (prefix match, no query), while a correlation id is still established
+for excluded calls.

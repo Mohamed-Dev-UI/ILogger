@@ -2,10 +2,39 @@ package diag
 
 import io.ilogger.annotations.DispatchMode
 import io.ilogger.annotations.Log
+import io.ilogger.annotations.LogDao
 import io.ilogger.annotations.LogMeta
 import io.ilogger.annotations.LogSensitive
 
 data class Row(val id: Long, val title: String)
+
+/**
+ * @LogDao is an interface-level opt-in; a class/object cannot be a DAO.
+ */
+// EXPECTED: @LogDao can only annotate an interface.
+@LogDao
+class NotADao
+
+/**
+ * Hilt bindings are optional and require Hilt on the consumer classpath.
+ */
+// EXPECTED: @LogDao(hilt = true) requires Hilt on the compilation classpath.
+@LogDao(hilt = true)
+interface HiltWithoutHilt {
+    @Log(action = "task.created", entity = Row::class)
+    suspend fun create(row: Row): Long
+}
+
+/**
+ * Koin bindings are optional and require Koin on the consumer classpath.
+ */
+// EXPECTED: @LogDao(koin = true) requires Koin on the compilation classpath.
+@LogDao(koin = true)
+interface KoinWithoutKoin {
+    @Log(action = "task.created", entity = Row::class)
+    suspend fun create(row: Row): Long
+}
+
 
 data class Customer(val id: Long, val creditScore: Int, @LogSensitive val tierName: String)
 

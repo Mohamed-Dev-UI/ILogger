@@ -20,6 +20,7 @@ internal object Ks {
     const val LOG_SENSITIVE_FQN = "io.ilogger.annotations.LogSensitive"
     const val LOG_EXCLUDE_FQN = "io.ilogger.annotations.LogExclude"
     const val LOG_ENTITY_ID_FQN = "io.ilogger.annotations.LogEntityId"
+    const val LOG_DAO_FQN = "io.ilogger.annotations.LogDao"
 
     const val NOTHING_FQN = "kotlin.Nothing"
 
@@ -42,6 +43,7 @@ internal object Ks {
     const val ROOM_RAW_QUERY = "androidx.room.RawQuery"
     const val ROOM_TRANSACTION = "androidx.room.Transaction"
     const val ROOM_DB_INSPECTOR = "androidx.room.Database"
+    const val ROOM_DAO = "androidx.room.Dao"
 
     /** Package prefixes that are never treated as domain entities. */
     private val nonDomainPrefixes = listOf(

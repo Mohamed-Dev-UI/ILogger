@@ -29,43 +29,117 @@ avoid the escape entirely.
 
 ## Function body anatomy (for annotated members)
 
-For `suspend fun insert(task: Task): Long` with `@Log(action = CREATED)`:
+For `suspend fun insert(task: Task): Long` with `@Log(action = CREATED)` and
+default options, the generated body (verified shape) is:
 
 ```kotlin
 override suspend fun insert(task: Task): Long {
+    if (!logger.enabled) return iloggerDelegate.insert(task)   // fast path
+    val result = iloggerDelegate.insert(task)                  // delegate first
+    logger.record(          // suspend path: ambient context (coroutine!)
+        action = "task.created",
+        actionVersion = 1,
+        level = LogLevel.AUDIT,
+        entity = "Task",
+        entityId = result?.toString(),   // inference applied
+        metadata = mapOf("title" to task?.title),
+        source = "TaskRepository.insert",
+    )
+    return result
+}
+```
+
+With `onFailure = true` the delegate call and SUCCESS record move inside a
+`try`, and the catch records the FAILURE event then **rethrows verbatim**:
+
+```kotlin
+try {
+    val result = iloggerDelegate.purge(task)
+    logger.record(..., action = "task.purged", entity = "Task",
+                  entityId = task?.id?.toString(), source = "TaskRepository.purge")
+} catch (error: Throwable) {
     try {
-        val result = iloggerDelegate.insert(task)
-        logger.record(          // suspend path: ambient context (coroutine!)
-            action = "task.created",
-            level = LogLevel.AUDIT,
-            entity = "Task",
-            entityId = result.toString(),   // inference applied
-            metadata = mapOf("title" to task.title),
-            source = "TaskDao.insert",
-        )
-        return result
-    } catch (e: Throwable) {
-        logger.record(          // failure event with structured payload
-            action = "task.created",
-            result = null, ..., failure = e, outcome = Outcome.FAILURE)
-        throw e                 // NEVER swallowed
+        logger.record(..., outcome = Outcome.FAILURE, failure = error, source = "/")
+    } catch (dispatchError: Throwable) {
+        error.addSuppressed(dispatchError)   // dispatch failures never mask the real error
+    }
+    throw error                              // NEVER swallowed
+}
+```
+
+Key rules of every generated body (exact order):
+
+1. **Fast path**: `if (!logger.enabled) return iloggerDelegate.<fn>(...)`.
+2. Optional `val logCtx0 = LogContexts.current()` (suspend) /
+   `LogContexts.currentThread()` (non-suspend) — emitted only when the
+   annotations need context/actor values (`context.*`, `actor.*`, explicit
+   actor override).
+3. Optional START event **before** the delegate call, when `before = true`
+   (result-derived values are omitted on START/FAILURE).
+4. The delegate call; with `onFailure = true` inside a `try`.
+5. Optional SUCCESS event (default) with `metadata` + `changes` (changes on
+   SUCCESS only), then `return result`.
+6. FAILURE catch (with `onFailure = true`): record, suppress dispatch errors
+   onto the original, rethrow the original.
+7. **Parameter dispatch**: `suspend` members call `record(...)`, non-suspend
+   members call `recordNow(...)` with an explicitly emitted
+   `DispatchMode.<MODE>` (its runtime default is `ASYNC`, not the engine's);
+   suspend members emit `dispatch` only when overriding `DEFAULT`.
+8. Member unrelated to audit — not annotated (passthrough in the fixtures) —
+   delegates untouched via interface delegation: zero generated overhead.
+
+## The `@LogDao` database facade
+
+`@LogDao` adds one generated file per `@Database` that exposes at least one
+opted-in DAO:
+
+```kotlin
+public class AppDatabase_ILogged internal constructor(
+    private val db: AppDatabase,
+    private val logger: ILogger,
+) {
+    public val database: AppDatabase get() = db
+    public fun taskDao(): TaskDao = db.taskDao().logged(logger)  // opted in
+    public fun logDao(): RoomLogDao = db.logDao()                // raw
+}
+
+public fun AppDatabase.logged(logger: ILogger): AppDatabase_ILogged =
+    AppDatabase_ILogged(db = this, logger = logger)
+```
+
+The facade only changes where the adapter comes from; `TaskDao_ILogger` still
+does the recording and still requires `@Log` on each method. Accessors for
+DAOs without `@LogDao(enabled = true)` are delegated unchanged.
+
+`@LogDao(hilt = true)` adds a second generated file:
+
+```kotlin
+@Module
+@InstallIn(SingletonComponent::class)
+public object AppDatabase_ILogged_HiltModule {
+    @Provides @Singleton
+    public fun taskDao(db: AppDatabase, logger: ILogger): TaskDao =
+        db.logged(logger).taskDao()
+}
+```
+
+Hilt discovers that module in the consumer's compilation; the library itself
+has no Hilt dependency.
+
+`@LogDao(koin = true)` generates the Koin equivalent:
+
+```kotlin
+public object AppDatabase_ILogged_KoinModule {
+    public val module: Module = module {
+        single<TaskDao> {
+            get<AppDatabase>().logged(get<ILogger>()).taskDao()
+        }
     }
 }
 ```
 
-Key rules of every generated body:
-
-1. **Fast path**: functions whose instrument state (feature disabled) skip
-   straight to `iloggerDelegate.<fn>(...)`.
-2. **Parameter dispatch**: `suspend` members call `record(...)` (ambient
-   context from the coroutine), non-suspend members call
-   `recordNow(...)`; an explicit `dispatch` is emitted for events with
-   `dispatch != DEFAULT`.
-3. **Explicit fail-free catch**: failure path records then `throw e`.
-4. **START events** come before the try, when `before = true`.
-5. Member **unrelated to audit** — not annotated (`passthrough` in the
-   fixtures) delegates untouched by delegation — the interface delegation
-   guarantees zero generated overhead for unannotated members.
+The definitions resolve the database and logger from Koin; the library has no
+Koin dependency either.
 
 ## Generated code hygiene
 

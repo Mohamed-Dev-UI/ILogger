@@ -9,6 +9,41 @@ remain stable within a major version.
 
 ### Added
 
+- **Triggers** (`ilogger-core`): `onEvent` / `onEvents` builder hooks backed by
+  `TriggerSink`. A trigger receives finalized events (whole engine batches under
+  `BUFFERED` dispatch) and cannot fail the producer: its exceptions are reported
+  to `onError` and are never retried or propagated by the engine.
+- `ilogger-room`: `RoomLogEntity` + `RoomLogDao` — the library-owned
+  `ilogger_events` table. Add the entity to your `@Database` and wire it with
+  `roomLogs(db.logDao())`: batching, JSON payloads, idempotent `REPLACE`
+  inserts and optional retention sweeps are handled by the library. `RoomLogSchema`
+  provides the DDL and `RoomLogSchema.migration(from, to)` for existing databases.
+- `ilogger-room`: `RoomLogTarget` — a late-bound sink for logger-before-database
+  setups; `bind(dao)` releases lifecycle events queued during `Room.build()`.
+  `RoomLogRetention.keepDays(...)` adds opt-in retention.
+- `examples/room` now persists every event through the shipped entity/DAO and
+  verifies persistence, idempotent flushes and the migration contract against a
+  real Room/SQLite database.
+- **`@LogDao` database facade** (`ilogger-annotations` + `ilogger-ksp`): mark
+  a DAO with `@LogDao` and the processor generates `<Database>_ILogged` plus
+  `Database.logged(logger)`. Opted-in accessors return the already-wrapped
+  `.logged(logger)` adapter, so call sites only wrap the database once;
+  `@LogDao(enabled = false)` returns the raw DAO. Logged methods still need an
+  explicit `@Log` — actions are never derived from method names. The existing
+  per-DAO `.logged()` form is unchanged.
+- `@LogDao(hilt = true)` generates an optional Hilt module in the consumer's
+  compilation, providing the already-wrapped DAO as a `@Singleton`; no Hilt
+  dependency is added to the library, and non-Hilt modules are unaffected.
+  Duplicate bindings across multiple `@Database` classes are rejected with a
+  compile-time diagnostic naming both owners.
+- `@LogDao(koin = true)` generates `<Database>_ILogged_KoinModule`, whose
+  `Module` resolves the database and logger from Koin and provides the wrapped
+  DAO. Koin and Hilt remain optional: absent framework annotations produce a
+  fixable diagnostic instead of a compile failure.
+- `:app` has an Android instrumented test (`RoomLoggingInstrumentedTest`) that
+  boots the Hilt graph on a device, emits through the generated repository
+  wrapper, and verifies the event in the real Room file through both the
+  injected DAO and a second connection.
 - `ilogger-room`: `RoomLogSink` — a batching-aware sink that stores events in
   the application's **own** Room table (external `LogEntity`) through its DAO.
   Schema stays app-owned; the sink forwards each engine batch in one lambda
@@ -17,6 +52,12 @@ remain stable within a major version.
   events (DAO flows + database lifecycle) into a `log_events` table with a
   lossless JSON payload column (`JsonEventCodec`) and demonstrates read-back
   and retention purges.
+
+### Changed
+
+- The Android demo no longer calls `.setDriver(BundledSQLiteDriver())`; Room's
+  default Android path owns the connection pool and needs no explicit driver.
+  JVM examples keep the bundled driver, which Room requires outside Android.
 
 ## [0.1.0] — 2026-10-19
 

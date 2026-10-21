@@ -25,15 +25,39 @@ copy.
 | Diagnostic | Cause | Fix |
 |---|---|---|
 | `INLINE` + non-suspend function | dead combination: `recordNow` cannot run inline on the calling thread synchronously | pick ASYNC/BUFFERED, or make the function suspend |
-| sensitive-value selection without policy (`DENY`) | contract protects the value | `sensitive = SensitiveHandling.HASH/MASK/OMIT`, or remove the selection |
+| sensitive-value selection without policy (`DENY`) | contract protects the value | `sensitive = SensitiveHandling.HASH`/`MASK`, or remove the selection |
 | `@LogExclude` referenced anywhere | values excluded by design | delete the reference; audit exactly what you meant |
+| `Duplicate metadata name 'X' in @Log of 'fn'.` | two selections share a key | remove one or rename via `name =` |
+| Flow-returning function annotated | streams have no single success/failure boundary | log at the collection site with `ILogger.record` or remove `@Log` |
+| generic interface/function | v1 processor limitation | concrete-signature overload, or manual `record` |
+
+## DAO opt-in (`@LogDao`)
+
+| Diagnostic | Cause | Fix |
+|---|---|---|
+| `@LogDao can only annotate an interface.` | the annotation was put on a class/object | move it to the DAO interface |
+| `@LogDao(hilt = true) requires Hilt on the compilation classpath.` | Hilt bindings requested without Hilt | add Hilt, or remove `hilt = true` |
+| `@LogDao(koin = true) requires Koin on the compilation classpath.` | Koin bindings requested without Koin | add koin-core, or remove `koin = true` |
+| `Duplicate Hilt binding for DAO 'X': ...` | the same DAO is exposed by multiple `@Database` classes | keep `hilt = true` on one database, or bind the DAO manually |
+| `Duplicate Koin binding for DAO 'X': ...` | the same DAO is exposed by multiple `@Database` classes | keep `koin = true` on one database, or bind the DAO manually |
 
 ## Warnings (non-fatal)
 
 - `suspiciousName`: risky names (password, token, cookie, ...) even without
   annotations — a warning because it may be a false positive; silence it by
   declaring the policy explicitly at the selection site.
-- Duplicate metadata keys (`name` collisions) are warnings.
+- Everything not listed under the tables above and not marked an error is a
+  warning; the full fatal list additionally covers action-grammar violations
+  (`Invalid action '<action>'`), blank actions, `before/onSuccess/onFailure`
+  all false, out-of-range `sampling`, missing parameter names, unresolved
+  types, default-package interfaces, and `schemaVersion < 1`.
+
+## Disabling without triggering diagnostics
+
+Not an error case, but the clean opt-out: `ksp { arg("ilogger.enabled",
+"false") }` turns the processor into a no-op — nothing is generated, no
+diagnostics are produced. Runtime disablement stays separate (`ILogger.disabled`
+or `enabled = false`).
 
 ## Behavior details
 

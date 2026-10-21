@@ -20,10 +20,14 @@ assertEquals("Task", event.entity)
 
 | Piece | Provides |
 |---|---|
-| `TestLogSink` | captures events; `awaitCount(n)` polls real time because async workers do not follow virtual time; `events` list for inspection |
-| `TestKit` | pre-wired logger (INLINE, `FixedClock`, sequential ids) |
-| `SequentialIdGenerator` | `e1, e2, ...` — unique per kit instance |
-| `FixedClock` | injectable clock for timestamp assertions |
+| `TestLogSink` | captures events — `events()` immutable snapshot, `last()`, `count()`, `clear()`; no filter helpers exist by design, filter `events()` yourself; `awaitCount(n, timeoutMillis = 5_000)` polls real time because async workers do not follow virtual time |
+| `TestKit` | pre-wired logger (INLINE, `FixedClock` at epoch `1_700_000_000_000`, sequential ids) |
+| `SequentialIdGenerator` | `e1, e2, ...` — unique, atomic |
+| `FixedClock` | injectable clock; `clock.set(millis)` advances deterministic time |
+
+`TestKit.create(configure)` runs **your** `configure` block last, so presets
+can be overridden (e.g. `configure { dispatch = DispatchMode.BUFFERED }` when
+testing batch behavior, then `sink.awaitCount(...)`).
 
 ## Determinism notes
 
@@ -33,7 +37,19 @@ assertEquals("Task", event.entity)
 - For `recordNow` paths (non-suspend functions default to ASYNC), use
   `awaitCount(...)`: the worker thread delivers asynchronously relative to
   the calling coroutine.
+- `awaitCount` deliberately sleeps on the **real** clock even under
+  `runTest`'s virtual scheduler — async workers deliver in real time.
 - JUnit boxing gotcha: `assertEquals(42L, event.someLong)` — mind the `L`.
+
+## TestKit vs. rolling your own
+
+| Criterion | `TestKit.create()` | Hand-built fake (own `ILogger.create { ... }` per test) |
+|---|---|---|
+| Setup per test | One line | 5–10 lines, repeated or shared fixture |
+| Deterministic clock/ids | Pre-wired, overridable | Manual wiring each time |
+| Async-era flakiness | `awaitCount` handles it | Usually rediscovered per project |
+| Error modes / dispatch experiments | `configure { ... }` override | Rebuild from scratch |
+| Verdict | **🏆 Recommended default** | Acceptable when a suite needs exotic engine setups shared across 10+ tests |
 
 ## What we test this way (ksp-tests module)
 

@@ -46,8 +46,31 @@ remain parseable forever with version-specific logic.
 ## Grep-ability guarantee
 
 Because the action string is gatherable from the constants object, every event
-is findable in a project just be referencing `TaskActions.CREATED` in your
+is findable in a project just by referencing `TaskActions.CREATED` in your
 IDE — no grep-through-cloud console needed.
+
+## Choosing action granularity
+
+| Strategy | Example | Pros | Cons | Verdict |
+|---|---|---|---|---|
+| One action per operation (recommended) | `task.created`, `task.updated`, `task.closed` | Unambiguous outcomes; per-action queries and rates are trivial | More constants | **🏆 Recommended** |
+| Coarse action + `metadata` variant | `task.changed` with `kind="created"` | Fewer constants | Queries need metadata filters; outcome semantics blur | Only for exploratory/prototype stages |
+| Variant suffixes | `task.created.imported` | Distinguishes entry paths in the id itself | Name sprawl; overuse fragments dashboards | Reserve for genuinely distinct entry paths |
+
+Rule of thumb: if two events would have different *queries* written about
+them, they deserve different actions.
+
+## Evolving a payload: the three options
+
+| Strategy | When | Cost | Recommendation |
+|---|---|---|---|
+| Bump `schemaVersion` on the same action | Metadata keys keep meaning, shape/semantics change | Low — one annotation param; consumers branch on `schemaId` | **🏆 Recommended** for contract changes |
+| Add a new action (`task.closed.v2`) | The *operation* itself changes | Medium — a new public identifier forever | Only when the old action is genuinely deprecated |
+| Silently change metadata shape | Never | High — corrupts historical files, breaks dedup/validation | Never do this |
+
+Versioned consumers stay simple: `schemaId` is
+`"task.deleted"` (v1) or `"task.deleted@v2"` (v2) — a stable string key even
+when Kotlin classes change between releases.
 
 ## Audit events are never sampled
 

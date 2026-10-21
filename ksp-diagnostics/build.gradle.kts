@@ -9,6 +9,8 @@ kotlin {
 
 dependencies {
     implementation(project(":ilogger-annotations"))
+    // Valid fixture wrappers (e.g. the Hilt-availability case) reference ILogger.
+    implementation(project(":ilogger-core"))
     ksp(project(":ilogger-ksp"))
     testImplementation(libs.junit)
 }

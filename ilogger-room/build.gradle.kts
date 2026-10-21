@@ -49,7 +49,12 @@ dependencies {
     // Builder extensions), so they must be exposed to consumers.
     api(libs.room.runtime)
 
+    // Default payload codec for the shipped log entity (lossless JSON).
+    implementation(project(":ilogger-serialization"))
+    implementation(libs.kotlinx.coroutines.core)
+
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }
 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {

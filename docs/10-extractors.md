@@ -1,59 +1,84 @@
 # 10. Extractors
 
-Extractors project richer values from a function's parameters/results into
-event metadata — application-defined, side-effect free, deterministic.
-
-## Living example (from the KSP test fixture)
+Extractors are the application's escape hatch for *derived* log values: small
+classes that convert a selected value into a log-safe primitive. The runtime
+contract lives in `io.ilogger.core`:
 
 ```kotlin
-class BatchSizeExtractor : MetadataExtractor {
-    // whole vararg/list value; returns loggable scalars only
-    override fun extract(value: Any?): Map<String, Any?> {
-        val list = (value as List<*>).size
-        return mapOf("size" to list)
-    }
+public fun interface LogValueExtractor<in T> {
+    /** Converts [value] into a loggable primitive, or null to omit. */
+    public fun extract(value: T): Any?
+}
+```
+
+Referenced from `LogMeta(extractor = SomeExtractor::class, ...)`. ILogger
+never serializes whole domain objects by default — an extractor is the
+explicit, application-chosen projection.
+
+## Rules
+
+1. **Public no-argument constructor required** — generated code instantiates
+   each unique extractor **once per wrapper**
+   (`private val iloggerExtractor0 = BatchSizeExtractor()`). Construction cost
+   is paid once, not per event.
+2. **Return loggable values only** — numbers, booleans, strings, enums (as
+   `.name`), or `null` to omit the entry entirely.
+3. **The only way to reference vararg / collection parameters** — the
+   processor provably cannot pick "the" element of a collection
+   (`tasks.first().title` is a compile error); an extractor summarizes
+   instead: `LogMeta("tasks", extractor = BatchSizeExtractor::class, name = "count")`.
+4. **`name` is required** in most extractor uses: keying stays explicit and
+   collision-free.
+5. **No sensitive mixing**: `extractor` + `sensitive = MASK/HASH` is a compile
+   error — the extractor's output shape is application-defined, so the policy
+   must be applied inside the extractor itself.
+6. **Keep them cheap, pure, and null-safe.** They run on the caller's path.
+
+## Living examples (from the KSP test fixture)
+
+```kotlin
+/** Explicit extractor: converts a whole Task to a log-safe value. */
+class TaskSummaryExtractor : LogValueExtractor<Task> {
+    override fun extract(value: Task): Any? = value.title
+}
+
+/** Vararg parameters can only be converted as a whole (see @Log grammar). */
+class BatchSizeExtractor : LogValueExtractor<Array<out Task>> {
+    override fun extract(value: Array<out Task>): Any? = value.size
 }
 
 @Log(action = TaskActions.BATCH_CREATED,
      metadata = [LogMeta("tasks", extractor = BatchSizeExtractor::class, name = "count")])
 suspend fun insertAll(vararg tasks: Task): List<Long>
-```
-
-Event metadata: `{count=4}` — the *count*, not the items.
-
-```kotlin
-class TaskSummaryExtractor : MetadataExtractor {
-    override fun extract(value: Any?): Map<String, Any?> {
-        val task = value as Task
-        return mapOf(
-            "id" to task.id,
-            "titleLength" to task.title.length,   // derived — projection, not passthrough
-        )
-    }
-}
 
 @Log(action = TaskActions.SUMMARIZED,
      metadata = [LogMeta("task", extractor = TaskSummaryExtractor::class, name = "summary")])
 suspend fun summarize(task: Task): Int
 ```
 
-## Rules
+Events: `{count=4}` — the *count*, not the items; `{summary="ship it"}` — a
+chosen projection, never the object.
 
-1. **Extractor + vararg/whole-value references**: the only way to reference
-   vararg/list parameters — the processor provably cannot pick "the" element
-   of a collection; an extractor summarizes instead.
-2. **No sensitive mixing**: an extractor's output cannot be masked/hashed by
-   the annotation layer; apply the policy inside the extractor itself.
-3. **They run on the generated path per event** — keep them cheap, pure,
-   null-safe (`null → empty map`); exceptions inside an extractor surface as
-   a dispatch error (and *are* retried/dropped per `ErrorMode` like other
-   event payloads).
-4. **The `name`** parameter is required with extractors: metadata keying
-   remains explicit and collision-free.
+## The throwing-extractor edge (know it, design around it)
+
+Generated code calls `extract(...)` while building the metadata map:
+
+| Wrapper shape | What happens when an extractor throws |
+|---|---|
+| `onFailure = true` (try/catch present) | The throw is caught by the wrapper's catch → recorded as a FAILURE event, then **rethrown to the caller** |
+| `onFailure = false` (default body, no try/catch) | The throw propagates to the caller; **no event is recorded at all** |
+
+**Recommended:** extractors never throw.Catch defensively inside `extract`
+and return `null` (omit) or a safe fallback value; an extractor is a
+projection function, and a missing optional field beats a broken audit path.
 
 ## When to use vs plain expressions
 
-- Plain `LogMeta("task.title")` when a single property suffices — smaller,
-  faster, statically validated.
-- Extractors for batch summaries, derived metrics, multi-field projections,
-  or access to values that need modest computation (length, count, slug).
+| Option | Best for | Cost |
+|---|---|---|
+| Plain property chain `LogMeta("task.title")` | Direct values — the default | Static validation, one property read |
+| Extractor | Batch summaries, derived metrics, multi-field projections, whole-object reduction | One extra class; one call per event; not statically shape-checked |
+| Constant `'literal'` | Labels that never vary per call | Zero |
+
+**Recommended hierarchy:** property chain → constant → extractor. Reach for
+an extractor only when the compiler cannot express the value you want.

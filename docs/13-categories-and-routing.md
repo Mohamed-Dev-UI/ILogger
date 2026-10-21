@@ -22,6 +22,19 @@ Binding rules:
    delivers *everything*, category bindings are additive.
 3. Events without `category` go to the catch-all only.
 
+## Routing strategies compared
+
+| Strategy | Shape | Simplicity | Production cost | Verdict |
+|---|---|---|---|---|
+| Single catch-all sink | `sink(s)` | Simplest; one destination per event decision | One pipeline; hard to mix audiences | Start here in small apps |
+| Catch-all + category bindings | `sink(console)` + `sink(file, "audit")` | Two lines | Durable trail isolated from noise | **🏆 Recommended** (catch-all for dev/console, categories for durable paths) |
+| Per-category everything | K category bindings, no catch-all | More wiring; unmatched events are silently dropped everywhere | Highest performance on hot paths (fewer sinks see each event) | High-volume domains (`http`, `db`) with strict audiences |
+| `CompositeLogSink` fan-out inside one binding | `sink(CompositeLogSink(console, file))` | One binding, many sinks | Composite internal loop; a shared error-mode | Rarely needed — separate bindings usually compose better (see [14](14-sinks.md)) |
+
+**Recommended:** catch-all for developer/ops visibility, plus narrow
+category bindings for the durable, machine-readable store. Events without a
+category then stay observable without ever touching the strict path.
+
 ## Categories in annotations
 
 ```kotlin
@@ -34,9 +47,11 @@ Binding rules:
 suspend fun close(taskId: Long)
 ```
 
-Host integrations pick their own categories: the Ktor plugin uses `"http"`,
-Room lifecycle events use `"audit"`-oriented routing, custom apps invent
-domain categories (`billing`, `admin`, `dev-support`).
+Applications and integrations pick categories explicitly. In the shipped
+integrations, `@Log(category = ...)` annotations set their own strings; the
+Ktor plugin and Room lifecycle events record **without** a category (they go
+to the catch-all) — so a `"audit"`-category durable sink stays exactly as
+strict as you configured it.
 
 ## The privacy aspect
 

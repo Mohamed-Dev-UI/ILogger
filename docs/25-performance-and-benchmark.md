@@ -82,8 +82,25 @@ the *quick* profile's parameters are in `benchmark/build.gradle.kts`. Harness
 
 ## Guidance
 
-- Production: `ASYNC` dispatch is the default for a reason — producers stay
-  sub-microsecond-ish while audit IO happens off-thread.
+- Production: `BUFFERED` (the engine default) dispatch producers stay
+  sub-microsecond-ish enqueue-only while audit IO happens off-thread in real
+  batches.
 - Tests and demo apps: `INLINE` keeps ordering deterministic.
 - Audit rates that reach 100k events/s: use `BUFFERED` batching with tuned
   `batchSize`/`flushIntervalMillis` so sinks see I/O-sized writes.
+- Disabled-first (`enabled = false`) removes essentially all cost —
+  feature-flag whole flavors without code changes (or with the processor kill
+  switch `ilogger.enabled=false` for compile-time removal).
+
+### Choosing the dispatch path
+
+| Need | Path | Producer cost | Verdict |
+|---|---|---|---|
+| Fastest possible filtering (per-call) | level-gated diagnostics or `enabled=false` | ~ns | For hot loops that must check |
+| Low producer cost, async delivery | `recordNow()` async enqueue | ~2.5 µs case 4 | Non-suspend producers |
+| Strong audit guarantees on suspend ops | `record()` via generated wrapper | ~2.8 µs incl. build + enqueue | **🏆 Standard path** |
+| Durability before return | `dispatch = INLINE` per event | Case 3-like + sink write inline | Reserve for money/state-critical ops |
+
+Numbers are environment-specific — treat the *ordering* (case 1 ≪ 4 < 2 ≈ 3)
+as the durable result, and re-run the harness on the deployment target before
+finalizing budgets.

@@ -31,12 +31,39 @@ data class Task(
 
 `LogMeta(..., sensitive = SensitiveHandling.X)`:
 
-| Policy | Effect |
-|---|---|
-| `DENY` (default) | selecting a sensitive value is a compile error |
-| `MASK` | value replaced by a mask; content is never recorded |
-| `HASH` | SHA-style digest recorded instead of the value |
-| `OMIT` | key present design no value; useful for "this field exists" |
+| Policy | Intended effect | In v1 |
+|---|---|---|
+| `DENY` (default) | selecting a sensitive value is a compile error | Yes |
+| `MASK` | value replaced by the fixed mask `"***"` | Yes — rendered as `LogMasking.MASK` in generated code |
+| `HASH` | truncated SHA-256 fingerprint recorded instead of the value | Yes — rendered as `LogMasking.hash(...)` |
+| `OMIT` | value excluded from the event entirely | Not selectable in practice — an omitted selection is a contradiction, so `OMIT` currently compiles to the `DENY` behavior. Treat it as unavailable |
+
+## Comparing the usable policies
+
+| Criterion | `DENY` | `MASK` | `HASH` |
+|---|---|---|---|
+| Data appears in events | Never | Never (constant string) | Fingerprint only |
+| Privacy | Strongest | Strongest | Strong (non-reversible) |
+| Analytical value | None — absence visible at compile time | Low (presence flag) | Identity correlation: same value → same hash |
+| Reversible | — | No | No (24-hex-character SHA-256 prefix) |
+| Cross-process stability | — | Trivially | Yes — deterministic digest, stable across processes |
+| Cost | Zero at runtime; compile-time friction | Zero | A SHA-256 per recorded field |
+| Recommended when | The value should never be logged — the default stance | Presence/absence matters more than content | You must correlate the same actor/credential across events without exposing it |
+
+## Runtime API: `io.ilogger.core.LogMasking`
+
+The transforms generated code applies are public and stable — reuse them when
+your own code must match event semantics:
+
+```kotlin
+LogMasking.MASK                      // "***"
+LogMasking.hash("secret")            // first 24 hex characters of SHA-256 (null in → null out)
+LogMasking.HASH_LENGTH               // 24
+```
+
+`hash` is deterministic and non-reversible: the same input always yields the
+same fingerprint, so events can be correlated acrosss time without exposing
+the value.
 
 ## Layer 4: `@LogExclude` — never logged, not even masked
 

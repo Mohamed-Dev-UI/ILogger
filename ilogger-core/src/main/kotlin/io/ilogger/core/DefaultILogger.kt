@@ -16,6 +16,8 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.onTimeout
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicBoolean
@@ -495,9 +497,11 @@ internal class DefaultILogger(
                             }
                             continue
                         }
-                        val waited = withTimeoutOrNull(config.flushIntervalMillis) {
-                            runCatching { queue.receive() }.getOrNull()
-                        } ?: break
+                        // `withTimeoutOrNull { queue.receive() }` can consume an
+                        // element and then discard it when the timeout wins the
+                        // race. `select` is atomic: either the element is received
+                        // or the timer fires, never both.
+                        val waited = receiveWithin(config.flushIntervalMillis) ?: break
                         when (waited) {
                             is Queued.Event -> batch.add(waited.event)
                             is Queued.Flush -> completeFlushMidBatch(batch, waited)
@@ -513,6 +517,18 @@ internal class DefaultILogger(
                     queued.completion.complete(Unit)
                 }
             }
+        }
+    }
+
+    /**
+     * Waits up to [timeoutMillis] for the next queued item without losing it to
+     * cancellation. Returns `null` when the timeout expires or the queue closes.
+     */
+    private suspend fun receiveWithin(timeoutMillis: Long): Queued? {
+        if (timeoutMillis <= 0) return queue.tryReceive().getOrNull()
+        return select {
+            queue.onReceiveCatching { result -> result.getOrNull() }
+            onTimeout(timeoutMillis) { null }
         }
     }
 

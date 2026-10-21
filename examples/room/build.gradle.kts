@@ -16,9 +16,14 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.sqlite.bundled)
 
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+
     // Two processors on one module: Room codegen + ilogger instrumentation.
     ksp(project(":ilogger-ksp"))
     ksp(libs.room.compiler)
+    // Test-only @Database (migration fixture) needs Room codegen as well.
+    kspTest(libs.room.compiler)
 }
 
 application {

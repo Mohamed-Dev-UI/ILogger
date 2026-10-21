@@ -31,11 +31,15 @@ and a *summarized* extractor instead
 ## Entity-id inference (highest priority first)
 
 ```
-1. entityId property of a single domain parameter   → task.id
-2. Room-shaped insert result                        → Long/id result (@Insert/@Upsert shaped)
-3. single id-typed parameter                        → the Long/String/Int param
-4. explicit @Log(entityId = "...")                  → your expression wins over all
+1. explicit @Log(entityId = "...")        → your expression wins over all
+2. insert-shaped: id-typed insert/update/insert|upsert result → the result value
+   (batch List<Long> results carry no single id — entityId omitted, no error)
+3. id property of a single domain parameter ("id", @LogEntityId or @PrimaryKey)
+4. single id-typed parameter (Long/Int/Short/String) — or, with several, the
+   unique one named exactly "id"/ending in "id"
 ```
+
+Anything else is ambiguous → compile error; the processor never guesses.
 
 Examples that inferred **3** (single id param):
 
@@ -65,8 +69,22 @@ suspend fun move(fromId: Long, toId: Long)   // ← Which one is the identity?
 //   Cannot infer entity ID of 'move'. No provable source: the result is not
 //   an id, no entity id property (named 'id', or marked @LogEntityId / Room's
 //   @PrimaryKey), and no single id-typed parameter.
-//   Fix: set entity/zone or the id explicitly: @Log(entityId = "fromId")
+//   Fix: specify @Log(entityId = "...") explicitly.
 ```
 
 Explicit always wins: `@Log(entityId = "fromId")` or `"toId"` — the audit
 record reflects your choice, deterministically.
+
+## Ways to identify the id property
+
+| Option | Example | Simplicity | Recommended when |
+|---|---|---|---|
+| Property named `id` | `val id: Long` | Zero — convention works | **🏆 Default**: normalize on `id` typing (KSP + Room `@PrimaryKey` both honor it) |
+| `@LogEntityId` on the property | `@LogEntityId val key: String` | One annotation | The stable id is *not* named `id` in your domain |
+| Room `@PrimaryKey` (auto) | `@PrimaryKey val uid: Long` | Zero for Room entities | Room entities — honored automatically |
+| Explicit `@Log(entityId = …)` | `@Log(entityId = "task.key")` | One attribute per site | Exotic signatures; never for the common case |
+
+**Recommendation:** rely on inference (`id` / `@PrimaryKey`); mark
+`@LogEntityId` on entities whose identity property has a different name; use
+explicit `entityId` expressions only where inference is legitimately
+ambiguous.

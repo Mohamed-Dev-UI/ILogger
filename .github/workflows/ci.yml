@@ -50,6 +50,7 @@ jobs:
           :ilogger-ktor:build
           :ksp-tests:test
           :ksp-diagnostics:test
+          :ksp-diagnostics-di:test
           :examples:basic:build
           :examples:room:build
           :examples:custom-sink:build

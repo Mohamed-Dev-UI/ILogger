@@ -33,8 +33,9 @@ source set by the KSP plugin automatically.
 
 | Option | Default | Meaning |
 |---|---|---|
-| `ilogger.enabled` | `true` | global kill switch; `false` makes the processor a no-op (fast path) |
-| `ilogger.verbose` | `false` | log each processed interface to the build output |
+| `ilogger.enabled` | `true` | global kill switch; `false` makes the processor a no-op (fast path, zero files generated) |
+| `ilogger.verbose` | `false` | log each generated file to the build output (one info line per interface/facade/DI module) |
+| `ilogger.expect-diagnostics` | `false` | fixture mode for diagnostics test suites: fatal diagnostics become warnings, collected verbatim into `build/generated/ksp/main/resources/ilogger-diagnostics.txt`. Do **not** enable in production modules |
 
 ```kotlin
 ksp {
@@ -72,3 +73,26 @@ consuming libraries.
   `build/generated/ksp/`).
 - KSP errors surface as `e: [ksp] <diagnostic>`; the diagnostic text links the
   offending declaration's file and line.
+
+## Codegen vs. alternatives
+
+There are other ways to attach audit instrumentation to interfaces. They are
+not competitors at equal cost — this processor exists because they trade away
+the guarantees:
+
+| Criterion | `ilogger-ksp` (recommended) | Runtime reflection proxy | Hand-written decorator per interface |
+|---|---|---|---|
+| How it works | Generates delegating Kotlin at build time | `java.lang.reflect.Proxy`-style interception | You write `TaskRepository_ILogger` yourself |
+| Compile-time validation of `@Log` | Yes — ambiguity is an error | No (annotations checked at runtime, errors appear late) | Only as good as your discipline |
+| Runtime overhead | One delegated call, no reflection | Reflection on every call | Same as codegen |
+| Dev speed (first feature) | Slower: plugin + annotation | Fastest: no build setup | Slow: boilerplate per interface |
+| Dev speed (each next feature) | Fastest — annotate and build | Fast | Slow — every interface repeats |
+| Debuggability | Generated Kotlin you can read/step into | Proxy magic, opaque stack frames | Fully manual |
+| Multiplatform | JVM target today | Reflection limits | Manual |
+| Recommended when | Default for audited interfaces | Not recommended | Only when codegen is unavailable |
+
+**🏆 Recommended:** KSP codegen for anything that should be audited;
+hand-written decorators only where KSP cannot run. Reflection proxies are
+documented here for completeness, not endorsement — they move failures from
+compile time to production. Manual recording remains available everywhere via
+`ILogger.record` ([27-manual-instrumentation.md](27-manual-instrumentation.md)).

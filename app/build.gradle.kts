@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -17,7 +18,8 @@ android {
         versionCode = 1
         versionName = "0.1.0"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // Boots HiltTestApplication; production modules still form the graph.
+        testInstrumentationRunner = "com.mohamed.dev.ui.ilogger.logging.ILoggerTestRunner"
     }
 
     buildTypes {
@@ -40,8 +42,12 @@ android {
 dependencies {
     implementation(project(":ilogger-annotations"))
     implementation(project(":ilogger-core"))
+    implementation(project(":ilogger-room"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.hilt.android)
     ksp(project(":ilogger-ksp"))
+    ksp(libs.hilt.compiler)
+    ksp(libs.room.compiler)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -56,6 +62,11 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(libs.koin.core)
+    kspAndroidTest(project(":ilogger-ksp"))
+    kspAndroidTest(libs.hilt.compiler)
+    kspAndroidTest(libs.room.compiler)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

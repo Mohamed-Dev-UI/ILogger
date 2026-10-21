@@ -39,9 +39,9 @@ priorities are, in order:
 |---|---|
 | `ilogger-annotations` | `@Log` & friends: annotation contracts (no dependencies) |
 | `ilogger-core` | Engine: `ILogger`, sinks, dispatch, ambient context (coroutines only) |
-| `ilogger-ksp` | KSP processor: generates the `.logged()` adapters |
+| `ilogger-ksp` | KSP processor: generates the `.logged()` adapters, database facades and optional Hilt/Koin bindings |
 | `ilogger-testing` | `TestKit`: deterministic logger + sink + clock + ids |
-| `ilogger-room` | Room database lifecycle audit (KMP, JVM/Android) |
+| `ilogger-room` | Room lifecycle audit + one-line event persistence with a shipped entity/DAO (KMP, JVM/Android) |
 | `ilogger-serialization` | `JsonEventCodec`: JSONL events for durable sinks |
 | `ilogger-ktor` | Ktor plugin: request audit + request-scoped ambient context |
 | `ksp-tests` | Processor behavior tests: compiled KSP sources + JUnit assertions |
@@ -136,7 +136,7 @@ follows; every runtime claim below is exercised by a runnable example in
   Prefer no credentials? The same jars are attached to every GitHub release:
   [releases/tag/v0.1.0](https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v0.1.0).
 
-## Documentation (25 topics)
+## Documentation (27 topics)
 
 | # | Topic | # | Topic |
 |---|-------|---|-------|
@@ -152,7 +152,12 @@ follows; every runtime claim below is exercised by a runnable example in
 | 10 | [Extractors](docs/10-extractors.md) | 23 | [Diagnostics catalog](docs/23-diagnostics-catalog.md) |
 | 11 | [Actors & ambient context](docs/11-actors-and-ambient-context.md) | 24 | [Limits & constraints](docs/24-limits-and-constraints.md) |
 | 12 | [Correlation & causation](docs/12-correlation-and-causation.md) | 25 | [Performance & benchmark](docs/25-performance-and-benchmark.md) |
-| 13 | [Categories & routing](docs/13-categories-and-routing.md) | | |
+| 13 | [Categories & routing](docs/13-categories-and-routing.md) | 26 | [Configuration reference](docs/26-configuration-reference.md) |
+| | | 27 | [Instrumentation approaches](docs/27-manual-instrumentation.md) |
+
+Where several implementations exist, each topic lists every option with a
+**🏆 Recommended** marker and a comparison table (simplicity, production
+cost, runtime overhead, development speed).
 
 ## License
 

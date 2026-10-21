@@ -24,24 +24,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.mohamed.dev.ui.ilogger.logging.AppLogger
-import com.mohamed.dev.ui.ilogger.logging.InMemoryTaskRepository
+import com.mohamed.dev.ui.ilogger.logging.EventBuffer
 import com.mohamed.dev.ui.ilogger.logging.Task
-import com.mohamed.dev.ui.ilogger.logging.logged
+import com.mohamed.dev.ui.ilogger.logging.TaskRepository
 import com.mohamed.dev.ui.ilogger.ui.theme.ILoggerTheme
+import dagger.hilt.android.AndroidEntryPoint
 import io.ilogger.core.Actor
 import io.ilogger.core.withActor
 import io.ilogger.core.withCorrelation
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    @Inject
+    lateinit var eventBuffer: EventBuffer
+
+    @Inject
+    lateinit var repository: TaskRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ILoggerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    TaskAuditScreen(Modifier.padding(innerPadding))
+                    TaskAuditScreen(
+                        modifier = Modifier.padding(innerPadding),
+                        eventBuffer = eventBuffer,
+                        repository = repository,
+                    )
                 }
             }
         }
@@ -49,16 +62,20 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Buttons emit real audit events through the generated wrappers; the app-owned
- * sink collects them into Compose state (latest first). Ambient actor context
- * is established per interaction, exactly like `withActor` in any backend.
+ * Buttons emit real audit events through the generated wrappers; the injected
+ * [EventBuffer] sink collects them into Compose state (latest first). Ambient
+ * actor context is established per interaction, exactly like `withActor` in
+ * any backend.
  */
 @Composable
-fun TaskAuditScreen(modifier: Modifier = Modifier) {
-    val events by AppLogger.eventLines.collectAsState()
+fun TaskAuditScreen(
+    modifier: Modifier = Modifier,
+    eventBuffer: EventBuffer,
+    repository: TaskRepository,
+) {
+    val events by eventBuffer.lines.collectAsState()
     val scope = rememberCoroutineScope()
     val counter = remember { mutableIntStateOf(0) }
-    val repository = remember { InMemoryTaskRepository().logged(AppLogger.logger) }
 
     Column(
         modifier = modifier.padding(16.dp),

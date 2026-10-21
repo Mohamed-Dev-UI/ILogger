@@ -45,6 +45,29 @@ LogContexts.onCurrentThread(LogContext(actor = actor)) {
 }
 ```
 
+`recordNow` cannot deliver events synchronously: passing
+`dispatch = DispatchMode.INLINE` throws `IllegalStateException`
+("recordNow cannot use INLINE dispatch; use the suspend record() for
+synchronous delivery"). Non-suspend overrides always emit an explicit
+`dispatch = DispatchMode.<MODE>` because `recordNow`'s runtime default is
+`ASYNC`, not the engine configuration.
+
+## The failure payload
+
+`LogFailure.from(error)` runs **eagerly at event creation**, so the structured
+payload stays correct even if the exception mutates later:
+
+| Field | Content |
+|---|---|
+| `errorType` | fully-qualified exception class name |
+| `message` | `error.message` (nullable) |
+| `rootCauseType` | deepest non-self-referential `cause` class name |
+| `stackSummary` | first `LogFailure.DEFAULT_STACK_FRAMES = 8` frames, class-level info only |
+
+No raw throwable ever travels inside the event; sinks see only this
+immutable description. Full instrumentation-approach trade-offs:
+[27-manual-instrumentation.md](27-manual-instrumentation.md).
+
 ## Event anatomy (`LogEvent`)
 
 ```

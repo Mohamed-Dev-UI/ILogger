@@ -18,6 +18,19 @@ withCorrelation("req-abc") {
 Both events print `corr=req-abc`; later queries (`WHERE schemaId =
 'task.created' AND correlationId = 'req-abc'`) reconstruct the story.
 
+### Who generates the correlation id — three options
+
+| Option | Example | Pros | Cons | Verdict |
+|---|---|---|---|---|
+| Incoming header (`X-Request-Id`, Ktor default) | echo and reuse the caller's value | Links client and server traces natively | Untrusted input — must be validated/sanitized | **🏆 Recommended** for server front-ends (with hygiene) |
+| Server-generated UUID | `UUID.randomUUID()` per call | No trusting the caller; always present | Client↔server trace correlation needs the echo response header | Fallback/default; Ktor plugin does this automatically |
+| Domain-supplied id (order no., session id) | `withCorrelation("order-1042")` | Business-meaningful: all events on one order link | Id reuse across runs can over-correlate | Best *inside* a bounded context with unique ids |
+
+**Recommended flow:** incoming header when present, UUID fallback otherwise
+(the `HttpAudit` plugin implements exactly this — see
+[20-ktor-integration.md](20-ktor-integration.md)), and a domain id when the
+"story" is a business object rather than a request.
+
 ## Causation — which event caused this
 
 `causationId` points at the *event id* that caused the current event. Chain:

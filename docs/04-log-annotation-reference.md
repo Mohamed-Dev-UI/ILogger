@@ -51,7 +51,11 @@ Complete signature (defaults shown):
   values (there is no result yet).
 - **`onFailure`** — also records a FAILURE event on the thrown exception.
   **Failure events never alter the exception**: it is rethrown verbatim.
-- **`sampling`** — `[0.0, 1.0]`; `<= 0` means "not set". Ignored for AUDIT.
+- **`sampling`** — `-1.0` means "not set" (inherit engine configuration);
+  anything else must be a rate in `[0.0, 1.0]` — other values are compile
+  errors. `sampling < 1.0` on an AUDIT event is a compile error: audit
+  records must never be silently dropped
+  ([17](17-sampling.md)).
 - **`description`** — free-form documentation embedded in generated code.
 
 ## Helper annotations
@@ -63,11 +67,49 @@ LogMeta("tasks", extractor = BatchSizeExtractor::class, name = "count")  // cust
 LogMeta("task.passwordHash", sensitive = SensitiveHandling.HASH)         // explicit policy
 
 LogChange(field = "title", from = "task.title", to = "newTitle")  // before→after pair
+
+@LogDao                             // interface-level: opt into the generated
+@Dao interface TaskDao { ... }      // <Database>.logged(logger) facade
+@LogDao(enabled = false)            // same DAO, facade returns it raw
+@LogDao(hilt = true)                // also generate a Hilt @Module binding
+                                    // the wrapped DAO for injection
+@LogDao(koin = true)                // same, for a generated Koin module
 ```
+
+`@LogDao` changes only how the `.logged(logger)` adapter is obtained; methods
+still need `@Log`. `hilt = true` additionally generates a module that provides
+the wrapped DAO from the Hilt graph. See
+[19-room-integration.md](19-room-integration.md).
 
 Check the quick names: `LogChange.from` / `to` are source expressions
 ([08-value-expressions.md](08-value-expressions.md)); `name` renames the
 metadata key; `sensitive` records the *chosen policy* for a sensitive value.
+
+## Choosing the level
+
+| Level | Use for | Audited by default? | Sampled by default? |
+|---|---|---|---|
+| `AUDIT` | Operations that must be accountable (who did what to which entity) | Yes — never min-level filtered | Never (compile-time enforced per event) |
+| `INFO` / `WARN` / `ERROR` | Diagnostic-shaped side-events that still deserve structure | No — follows `minLevel` | Yes, engine-configurable |
+| `DEBUG` / `TRACE` | High-volume diagnostics | No | Yes — typically sampled hard |
+
+**Recommended:** leave `@Log` events at the default `AUDIT` unless the event
+is truly diagnostic (a side-effect log of an *attempt*, not an accountable
+action). If you find yourself using `INFO` for an operation that changes
+state, it is an audit event.
+
+## Choosing the dispatch mode
+
+| Option | Meaning | Recommended when |
+|---|---|---|
+| `DEFAULT` (default) | Follows the engine configuration | **Almost always** — one dispatch decision for the whole app |
+| `INLINE` | Synchronous write, ordering + failure visible to caller | Events that must be durable *before* the operation returns (e.g. money movement); suspend functions only |
+| `ASYNC` | One-off async write to the worker | Single-event latency-sensitive paths |
+| `BUFFERED` | Async + real batches to sinks | High-volume paths feeding database/file sinks |
+
+Per-event `dispatch` overrides are the exception; set the engine default once
+([16-dispatch-backpressure-error-modes.md](16-dispatch-backpressure-error-modes.md),
+[26-configuration-reference.md](26-configuration-reference.md)).
 
 ## Minimal working shapes (all verified by the test suite)
 

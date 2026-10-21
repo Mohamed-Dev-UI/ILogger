@@ -15,6 +15,24 @@ Deliberate constraints — each is a design decision, not a missing feature.
 | No silent entity-id guesses | ambiguity always produces a compile error with a Fix |
 | No non-const action expressions | actions are public identifiers, defined once |
 
+## Documented constants
+
+Exact values implementations and consumers may rely on:
+
+| Constant | Value | Source |
+|---|---|---|
+| `LogFailure.DEFAULT_STACK_FRAMES` | 8 | `EventDetails.kt` |
+| `LogMasking.MASK` | `"***"` | `LogValueExtractor.kt` |
+| `LogMasking.HASH_LENGTH` | 24 | hex characters of the SHA-256 digest |
+| Engine defaults | `bufferSize=4096`, `batchSize=128`, `flushIntervalMillis=250`, `closeTimeoutMillis=5_000`, `retryMaxAttempts=3`, `retryBaseBackoffMillis=50` | `ILoggerBuilder` |
+| Retry backoff | `base * 2^attempt`, per-wait cap 10 s | `DefaultILogger` |
+| Recursion depth guard (sync paths) | 32 nested dispatch calls | `DefaultILogger` |
+| `TestKit` fixed clock | epoch `1_700_000_000_000` | `ilogger-testing` |
+| `TestLogSink.awaitCount` timeout | 5_000 ms, 5 ms poll | `ilogger-testing` |
+| Ktor defaults | `X-Request-Id` header; excludes `/health`, `/ready`, `/metrics` (prefix match) | `HttpLogConfig` |
+| Room retention conversions | day = 86_400_000 ms, hour = 3_600_000 ms | `RoomLogRetention` |
+| Room table | `ilogger_events`, indexes on `ts`/`level`/`action` | `RoomLogSchema` |
+
 ## Version & tooling pins
 
 - Kotlin 2.2.10 / KSP 2.3.12 / KotlinPoet 2.2.0 (2.4 metadata unreadable by

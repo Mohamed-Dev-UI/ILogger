@@ -71,7 +71,25 @@ suspend fun complete(id: Long) {
 - **The engine** has exactly one job: move valid `LogEvent`s to their sinks,
   under bounded memory, with honest failure semantics.
 
+## Adoption strategies compared
+
+| Strategy | Shape | Audit guarantees | Dev speed | Maintenance | Verdict |
+|---|---|---|---|---|---|
+| Codegen-first (annotate interfaces) | `@Log` on repository/DAO/use-case interfaces; engine wired once | Strongest — proven at compile time | Slower first day, fastest every day after | Lowest — contract-owned | **🏆 Recommended** |
+| Hybrid (codegen + manual boundaries) | `@Log` core ops; `record()` for streams/legacy | Strong where annotated | Medium | Medium | Realistic end-state for large apps |
+| Manual-only (`record`/`recordNow` everywhere) | Engine + call-site code | As good as discipline allows | Fast first day, slow later | Highest | Acceptable to start with zero build config; migrate opportunistically |
+| Engine-only (no events) | Sinks + diagnostics `trace..error` | None (diagnostics only) | Fastest | Low | Observability shells, prototypes |
+
+Full comparison of the recording instruments:
+[27-manual-instrumentation.md](27-manual-instrumentation.md). The recommended
+instrumentation strategy in practice: **annotate domain operations with
+`@Log`, consult `trace..error` for diagnostics, `record` only where codegen
+cannot reach.**
+
 ## Reading order
 
 Quickstart (02) → annotation reference (04) → value grammar (08) →
-sinks/routing (13, 14) → integration docs (16, 19, 20).
+sinks/routing (13, 14) → configuration (26) → integrations (16, 19, 20).
+Testing (18) early; the diagnostics catalog (23) when the compiler talks
+back; manual instrumentation alternatives (27) before bypassing the
+processor.

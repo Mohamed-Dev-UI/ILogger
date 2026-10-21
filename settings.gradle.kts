@@ -39,6 +39,11 @@ include(":ksp-tests")
 // test asserts the `// EXPECTED:` markers verbatim.
 include(":ksp-diagnostics")
 
+// DI-specific negative diagnostics: duplicate @LogDao(hilt/koin = true)
+// bindings need those annotations on the compilation classpath (core
+// artifacts only — no Android or DI plugin required for fixture compilation).
+include(":ksp-diagnostics-di")
+
 // Framework integrations (optional modules)
 include(":ilogger-room")
 include(":ilogger-serialization")

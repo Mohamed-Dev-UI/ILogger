@@ -16,8 +16,58 @@ ILogger.create {
 }
 ```
 
-Levels not listed are sampled at 1.0. The sampler is injectable
-(`sampler: LogSampler?`) for deterministic or context-aware decisions.
+Levels not listed are sampled at 1.0.
+
+## The sampler SPI
+
+```kotlin
+public fun interface LogSampler {
+    public fun shouldSample(level: LogLevel, action: String): Boolean
+}
+```
+
+The shipped implementation:
+
+```kotlin
+public class LevelSampler(
+    private val rates: Map<LogLevel, Double>,
+    private val random: Random = Random.Default,
+) : LogSampler {
+    public constructor(vararg rates: Pair<LogLevel, Double>, random: Random = Random.Default)
+    // rates must be within [0.0, 1.0]; unlisted levels return true (never sampled)
+}
+```
+
+Contract notes:
+
+- `shouldSample` runs before event allocation — a declined event costs
+  **zero allocations**.
+- The `action` parameter currently receives the **synthetic level label**
+  (`"log.trace"`, `"log.debug"`, …), not the event's real action — do not key
+  per-action decisions off it; treat it as a level discriminator for now.
+- Audit events always pass the sampler path at runtime as a safety net
+  (annotation-level sampling of audit is already rejected at compile time).
+- The per-event `@Log(sampling = …)` override bypasses the configured sampler
+  and uses its own rate directly (`Random.nextDouble() < rate`).
+
+## A custom sampler
+
+```kotlin
+// example: sample trace only in hot paths marked by category
+class CategoryTraceSampler : LogSampler {
+    override fun shouldSample(level: LogLevel, action: String): Boolean =
+        level != LogLevel.TRACE || threadLocalHotPath.get() != true
+}
+ILogger.create { sampler = CategoryTraceSampler() }
+```
+
+Options compared:
+
+| Option | Config surface | Behavior | Verdict |
+|---|---|---|---|
+| `sampling(TRACE to 0.1, DEBUG to 0.5)` | One builder call | Per-level rates | **🏆 Recommended** — covers 95 % of needs |
+| Custom `LogSampler` | One class | Any deterministic/context rule | Only for rate-by-content policies |
+| Per-event `@Log(sampling = …)` | Per annotation | Local to one noisy event | One particularly chatty side-event |
 
 ## Per-event override in `@Log`
 

@@ -54,6 +54,23 @@ The resulting event metadata in the above order:
 {event=closure} ; {requestId=...} ; {title=...} ; {myKey=...}
 ```
 
+Note: in v1 a constant expression (`'literal'`) **requires** an explicit
+`name =` — otherwise the processor reports
+`LogMeta('...') needs an explicit name.`
+
+## Ways to produce one metadata value
+
+| Option | Example | Simplicity | Runtime cost | Dev speed | Verdict |
+|---|---|---|---|---|---|
+| Property chain | `LogMeta("task.title")` | Minimal — one path | One property read | Fastest | **🏆 Default choice** |
+| Constant literal | `LogMeta("'v2'", name = "pipeline")` | Minimal | Zero (constant) | Fast | Labeling/annotations on events |
+| `context.*` / `actor.*` | `LogMeta("context.tenantId")` | Minimal | One map lookup | Fast | Correlation-style context |
+| Custom extractor | `LogMeta("tasks", extractor = BatchSizeExtractor::class, name = "count")` | Needs a class | A per-wrapper instance call | Slower — extra class | Derived/aggregate values the compiler can't express (see [10](10-extractors.md)) |
+
+**Recommended:** property chains by default (proven, cheapest, PII-scoped);
+reach for an extractor only when the value must be *computed*; constants only
+for labels that never vary per call.
+
 ## What the processor knows (`log.trace` example)
 
 The example's `context.requestId` became metadata `{requestId=...}`:

@@ -104,3 +104,16 @@ assertEquals("3", event.entityId)
 ```
 
 ([18-testing.md](18-testing.md))
+
+## Alternative wirings (same events, different ownership)
+
+| Wiring | When | Cost | Verdict |
+|---|---|---|---|
+| Explicit instance (`ILogger.create`) | Everything with a defined lifecycle | ~4 lines | **🏆 Recommended** (also see [26](26-configuration-reference.md)) |
+| `ILogger.configure { }` + `ILogger.default` | Scripts/prototypes; libraries that adopt the host's default | 1 line | Global state; replaced instances are never auto-closed |
+| DI-owned instance (Hilt `@Provides`) | Android/complex graphs | Module recipes in [21](21-android-app-guide.md) | Same engine semantics, graph-scoped lifecycle |
+| `ILogger.disabled` | Deliberate opt-out (flavor builds) | 0 | Drops everything by contract |
+
+The quickstart above uses the explicit instance: one object owning its
+sinks and a deterministic `close()`. Everything else (categories, room
+persistence, Ktor context) composes onto it without new machinery.
