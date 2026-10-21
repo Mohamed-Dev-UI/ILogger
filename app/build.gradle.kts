@@ -15,8 +15,8 @@ android {
         applicationId = "com.mohamed.dev.ui.ilogger"
         minSdk = 28
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "1.0.0"
 
         // Boots HiltTestApplication; production modules still form the graph.
         testInstrumentationRunner = "com.mohamed.dev.ui.ilogger.logging.ILoggerTestRunner"
@@ -31,8 +31,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
@@ -43,7 +43,11 @@ dependencies {
     implementation(project(":ilogger-annotations"))
     implementation(project(":ilogger-core"))
     implementation(project(":ilogger-room"))
+    implementation(project(":ilogger-serialization"))
+    // The in-app TestKit screen runs the same deterministic kit consumers use.
+    implementation(project(":ilogger-testing"))
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
     implementation(libs.hilt.android)
     ksp(project(":ilogger-ksp"))
     ksp(libs.hilt.compiler)

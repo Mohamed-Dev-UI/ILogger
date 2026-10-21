@@ -5,10 +5,20 @@ All notable changes to ILogger. Format follows
 [SemVer](https://semver.org/) — the Kotlin DSL surface and artifact layout
 remain stable within a major version.
 
-## Unreleased
+## [1.0.0] — 2026-10-21
 
 ### Added
 
+- **Full reference app** (`:app`): a complete Android showcase covering every
+  library usage case in one installable app — navigation drawer with nine
+  screens (overview + live event feed, annotated task board, audit trail,
+  file audit, protection, engine lab, test kit, copy-ready recipes, bench),
+  production-shaped Hilt wiring (logger-before-database `RoomLogTarget`,
+  category-routed sinks: live feed / Room 30-day retention / Logcat /
+  rotated JSONL forensics, `onEvents` metrics with isolated failures),
+  generated `@LogDao` facade with Hilt **and** Koin bindings, ambient
+  actor/tenant/correlation scopes driven from the UI, and instrumented
+  tests booting the real Hilt graph on device.
 - **Triggers** (`ilogger-core`): `onEvent` / `onEvents` builder hooks backed by
   `TriggerSink`. A trigger receives finalized events (whole engine batches under
   `BUFFERED` dispatch) and cannot fail the producer: its exceptions are reported
@@ -73,8 +83,6 @@ First production release.
 
 ### Added
 
-### Added
-
 - **Annotations** (`ilogger-annotations`): `@Log` (action, schemaVersion,
   entity, entityId, actor, level, category, dispatch, metadata, changes,
   before/onSuccess/onFailure, sampling, description), `@LogMeta`,
@@ -113,4 +121,5 @@ First production release.
   tag-driven release workflow (GitHub Packages + release artifacts);
   Apache-2.0; README + 25-topic documentation set.
 
+[1.0.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v1.0.0
 [0.1.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v0.1.0

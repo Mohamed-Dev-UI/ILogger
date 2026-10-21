@@ -50,6 +50,9 @@ class RoomLoggingInstrumentedTest {
     @Inject
     lateinit var buffer: EventBuffer
 
+    @Inject
+    lateinit var cache: SessionCache
+
     private var reopened: AppDatabase? = null
 
     @Before
@@ -109,6 +112,26 @@ class RoomLoggingInstrumentedTest {
             )
         }
 
+    /**
+     * The cache is synchronous, so its generated wrapper uses `recordNow`.
+     * This also guards the DI graph: binding [InMemorySessionCache] raw would
+     * call the implementation without recording anything.
+     */
+    @Test
+    fun injectedNonSuspendCacheRecordsThroughTheWrapper() = runBlocking<Unit> {
+        cache.put(Task(id = 99, title = "cache probe", priority = TaskPriority.HIGH))
+        logger.flush()
+
+        val row = awaitAction(TaskActions.CACHE_WRITTEN)
+        assertEquals("AUDIT", row.level)
+        assertEquals("Task", row.entity)
+        assertEquals("99", row.entityId)
+        assertTrue(
+            "payload=${row.payload}",
+            row.payload.contains("cache probe"),
+        )
+    }
+
     private suspend fun awaitCreatedRow(): List<RoomLogEntity> = withTimeout(5_000) {
         var rows: List<RoomLogEntity> = emptyList()
         while (rows.none { it.action == TaskActions.CREATED }) {
@@ -116,5 +139,15 @@ class RoomLoggingInstrumentedTest {
             if (rows.none { it.action == TaskActions.CREATED }) delay(25)
         }
         rows
+    }
+
+    private suspend fun awaitAction(action: String): RoomLogEntity = withTimeout(5_000) {
+        while (true) {
+            database.logDao().recent(limit = 50)
+                .firstOrNull { it.action == action }
+                ?.let { return@withTimeout it }
+            delay(25)
+        }
+        error("unreachable")
     }
 }

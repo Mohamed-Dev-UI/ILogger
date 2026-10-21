@@ -13,7 +13,7 @@ plugins {
 // verified at central.sonatype.com under the GitHub account Mohamed-Dev-UI.
 allprojects {
     group = "io.github.mohamed-dev-ui"
-    version = "0.1.0"
+    version = "1.0.0"
 }
 
 /**

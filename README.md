@@ -47,8 +47,13 @@ priorities are, in order:
 | `ksp-tests` | Processor behavior tests: compiled KSP sources + JUnit assertions |
 | `ksp-diagnostics` | Negative diagnostics: intentionally invalid `@Log` fixtures, asserted verbatim |
 | `examples/*` | Runnable feature walkthroughs (`basic`, `room`, `custom-sink`, `server`, `advanced-audit`) |
-| `:app` (demo) | Android Compose app with an in-app event viewer |
+| `:app` (reference app) | Full Android tour: Room + JSONL sinks, annotated repo/DAO, protection, engine lab, TestKit and copy-ready recipes |
 | `:benchmark` | JMH suite (kotlinx-benchmark) + deterministic harness for overhead measurement |
+
+The Android reference app is the fastest way to learn the library: every
+screen drives the real engine, and the Recipes screen contains copy-ready
+Gradle, Hilt, Room, Koin, Ktor, sink and testing snippets. See
+[docs/21-android-app-guide.md](docs/21-android-app-guide.md).
 
 ## Quick start
 
@@ -57,7 +62,7 @@ Add the artifacts you need — published to **Maven Central**, group
 
 ```toml
 [versions]
-ilogger = "0.1.0"
+ilogger = "1.0.0"
 
 [libraries]
 ilogger-core = { module = "io.github.mohamed-dev-ui:ilogger-core", version.ref = "ilogger" }
@@ -112,8 +117,8 @@ follows; every runtime claim below is exercised by a runnable example in
   and attaches all jars + APK to a GitHub release with generated notes:
 
   ```bash
-  git tag -a v0.1.1 -m "ILogger v0.1.1"
-  git push origin v0.1.1
+  git tag -a v1.0.0 -m "ILogger v1.0.0"
+  git push origin v1.0.0
   ```
 - **Changelog** lives in [CHANGELOG.md](CHANGELOG.md).
 - **Consuming artifacts from GitHub Packages** (requires a GitHub token —
@@ -134,7 +139,7 @@ follows; every runtime claim below is exercised by a runnable example in
   ```
 
   Prefer no credentials? The same jars are attached to every GitHub release:
-  [releases/tag/v0.1.0](https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v0.1.0).
+  [releases/tag/v1.0.0](https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v1.0.0).
 
 ## Documentation (27 topics)
 

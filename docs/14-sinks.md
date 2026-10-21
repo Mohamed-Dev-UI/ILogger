@@ -176,19 +176,30 @@ Compositional patterns:
 | Persist in-app DB without wiring a schema | `onEvents` trigger or `RoomLogSink` |
 | Ship to a collector | implement write() with a batching client |
 
-## The ui tail example (Android `:app`)
+## The UI tail example (Android `:app`)
+
+The reference app keeps the structured event, not just a formatted line, so
+the UI can filter by level/outcome/category and inspect the typed payload.
+Both lists are capped, and a paused flag freezes the view without dropping
+events from the other sinks:
 
 ```kotlin
-private val collectingSink = object : LogSink {
-    override suspend fun write(event: LogEvent) {
-        val line = DefaultTextEventCodec.encode(event)
-        _eventLines.update { prev -> (listOf(line) + prev).take(50) }
-    }
+private val _events = MutableStateFlow<List<LogEvent>>(emptyList())
+
+val sink = object : LogSink {
+    override suspend fun write(event: LogEvent) = accept(listOf(event))
+    override suspend fun writeAll(events: List<LogEvent>) = accept(events)
+}
+
+private fun accept(batch: List<LogEvent>) {
+    if (paused) return
+    _events.update { prev -> (batch.asReversed() + prev).take(400) }
 }
 ```
 
-Compose collects `_eventLines` — the app shows live audit events **without**
-any framework bridge; the sink owns the display concern.
+Compose collects `_events` — the app shows live audit events **without** any
+framework bridge; the sink owns the display concern. Batch support matters:
+`BUFFERED` dispatch calls `writeAll`, so one UI update can cover many events.
 
 ## Codecs (`EventCodec`)
 

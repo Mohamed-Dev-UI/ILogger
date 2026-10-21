@@ -1,14 +1,51 @@
-# 21. Android app guide (`:app` demo)
+# 21. Android reference app (`:app`)
 
-The demo app shows the production shape: Hilt owns the graph, Room persists
-every event through the shipped `RoomLogEntity`/`RoomLogDao`, and Compose shows
-a bounded live view of events.
+The `:app` module is the integration reference for ILogger on Android. It is a
+single Compose app that exercises **every Android-facing library surface** —
+annotation-driven repositories, a `@LogDao` Room DAO, actors and ambient
+context, correlation/causation, sensitive-value policies, category routing,
+Room and JSONL sinks, retention, dispatch/backpressure policies, sampling,
+manual instrumentation and TestKit — against the real engine, not mocks.
 
-## Hilt wiring (recommended)
+One app is enough: each concern is a screen, and every screen drives the same
+application-scoped logger. The only server-only integration is Ktor; it is
+covered by [`examples/server`](../examples/server) and the Recipes screen.
 
-ILogger ships no Hilt annotations or dependencies — DI stays an application
-concern. The whole wiring is a normal module; the graph direction is
-`AppDatabase -> ILogger -> consumers`, so there is no cycle:
+## What every screen proves
+
+| Screen | What it exercises |
+|---|---|
+| **Overview** | Live metrics from an `onEvents` trigger, top actions, categories, the exact logger profile |
+| **Task board** | `@Log` repository + `@LogDao` DAO, six actor types, tenant attributes, correlation, `before`, `onFailure`, `LogChange`, extractors, `suppressSources`, manual `record`, Flow collection, `recordNow` + `LogContexts.onCurrentThread`, diagnostics, failure propagation and causation |
+| **Live events** | The catch-all in-memory sink: filtering by level/outcome/category/text, `onDispatchError` issues, full typed event details and lossless JSON |
+| **Room audit** | `RoomLogTarget`, library-owned `ilogger_events` table, queued `room.database.created/opened` lifecycle events, retention sweeps, a second connection in the device test |
+| **JSONL files** | `TextFileSink` + `JsonEventCodec`, audit-only category routing, size-based rotation, read-back of the real file |
+| **Protection** | `@LogSensitive` contract, HASH/MASK on the same value, raw-value leak check, `@LogExclude` and the compile-time refusal list |
+| **Engine lab** | Bounded buffer, DROP_OLDEST vs BLOCK, RETRY, INLINE, PROPAGATE, sampling, `minLevel` and the runtime `enabled` switch — each run against an independent logger |
+| **TestKit** | The same deterministic suite as `BenchSuiteTest`, run on-device with `FixedClock` and sequential ids |
+| **Recipes** | Copy-ready Gradle, Hilt, Room, Koin, Ktor, sink, testing and diagnostics snippets |
+
+The source is deliberately small and screen-oriented:
+
+```
+app/src/main/java/com/mohamed/dev/ui/ilogger/
+├── logging/           # app-owned domain, session and logger graph
+│   ├── Domain.kt          Task + TaskDao (@LogDao) + extractors
+│   ├── TaskRepository.kt  annotated contract, cache and Flow boundary
+│   ├── DemoSession.kt     actor/tenant/correlation/suppression scope
+│   ├── LoggingModule.kt   Hilt graph: target → logger → database → wrappers
+│   ├── EventBuffer.kt     bounded live feed + dispatch issues
+│   ├── AuditMetrics.kt    onEvents aggregation
+│   └── AuditFileStore.kt  read side of the JSONL sink
+└── ui/                # app-scoped controllers + Compose screens
+```
+
+## Hilt wiring
+
+The graph extends the recommended Android shape with category routing and
+lifecycle telemetry. The important ordering is `RoomLogTarget -> ILogger ->
+AppDatabase`, so `room.database.created` and `room.database.opened` are
+recorded before the DAO exists, then drained by `bind`:
 
 ```kotlin
 @Module
@@ -16,257 +53,187 @@ concern. The whole wiring is a normal module; the graph direction is
 object LoggingModule {
 
     @Provides @Singleton
-    fun database(@ApplicationContext context: Context): AppDatabase =
-        // No explicit driver on Android: Room's default framework path uses
-        // its own connection pool and is safe across the logger's worker and
-        // the UI. (JVM hosts must supply a driver — there is no framework
-        // SQLite there.)
-        Room.databaseBuilder<AppDatabase>(context, "app.db").build()
+    fun target(feed: EventBuffer): RoomLogTarget = RoomLogTarget(
+        retention = RoomLogRetention.keepDays(days = 30),
+        onError = { error -> feed.reportRetentionError(error) },
+    )
 
     @Provides @Singleton
-    fun logger(db: AppDatabase, buffer: EventBuffer): ILogger = ILogger.create {
-        dispatch = DispatchMode.ASYNC       // UI threads never block
-        sink(buffer.sink)                   // bounded live view
-        sink(ConsoleLogSink())              // logcat
-        roomLogs(db.logDao(), retention = RoomLogRetention.keepDays(30))
-    }
+    fun logger(
+        feed: EventBuffer,
+        metrics: AuditMetrics,
+        target: RoomLogTarget,
+        files: AuditFileStore,
+    ): ILogger = ILogger.create {
+        dispatch = DispatchMode.BUFFERED
+        bufferSize = 512
+        batchSize = 32
+        flushIntervalMillis = 150
+        overflow = OverflowPolicy.DROP_OLDEST
+        closeTimeoutMillis = 3_000
+        onErrorMode(LogLevel.AUDIT, ErrorMode.RETRY)
 
-    @Provides fun logDao(db: AppDatabase): RoomLogDao = db.logDao()
+        sink(feed.sink)                                       // catch-all live view
+        sink(target)                                          // catch-all durable trail
+        sink(ConsoleLogSink { line -> Log.d("ILogger", line) },
+             category = DIAGNOSTIC_CATEGORY)                  // Logcat, low volume
+        sink(TextFileSink(
+            file = files.file.toPath(),
+            codec = JsonEventCodec,
+            append = true,
+            flushEveryWrite = true,
+            rotation = TextFileSink.Rotation(maxBytesPerFile = 12 * 1024, maxFiles = 3),
+        ), category = AUDIT_CATEGORY)                         // strict forensics
+        onEvents { events -> metrics.record(events) }         // failure-isolated UI metrics
+        onDispatchError = { event, sink, error -> feed.reportDispatchError(event, sink, error) }
+    }
 
     @Provides @Singleton
-    fun taskRepository(logger: ILogger): TaskRepository =
-        InMemoryTaskRepository().logged(logger)
+    fun database(
+        @ApplicationContext context: Context,
+        logger: ILogger,
+        target: RoomLogTarget,
+    ): AppDatabase = Room.databaseBuilder<AppDatabase>(context, DATABASE_NAME)
+        .withAuditCallback(logger, label = DATABASE_NAME)
+        .build()
+        .also { target.bind(it.logDao()) }
+
+    @Provides @Singleton
+    fun taskDao(db: AppDatabase, logger: ILogger): TaskDao = db.logged(logger).taskDao()
+
+    @Provides @Singleton
+    fun taskRepository(impl: RoomTaskRepository, logger: ILogger): TaskRepository =
+        impl.logged(logger)                                   // generated wrapper, injected once
 }
 ```
 
-`AppDatabase` is the app's own class. Adding the library log table is one entity
-and one accessor; Room generates `RoomLogDao_Impl` in this module:
+`AppDatabase` owns the schema and the migration policy; ILogger only supplies
+`RoomLogEntity` and `RoomLogDao`. The demo uses
+`fallbackToDestructiveMigration` because it is a sample app — a production app
+adds a normal migration (`RoomLogSchema.migration(...)` is available).
+
+The activity injects only app-scoped controllers. An in-flight audited
+operation therefore survives rotation and navigation; no screen owns a logger,
+a database or a coroutine that can be cancelled by recomposition.
+
+## Session, actor and correlation
+
+`DemoSession` is the app-owned ambient scope. Every UI action runs through it:
 
 ```kotlin
-@Database(entities = [TaskRow::class, RoomLogEntity::class], version = 3, exportSchema = false)
-abstract class AppDatabase : RoomDatabase() {
-    abstract fun taskDao(): TaskDao
-    abstract fun logDao(): RoomLogDao
-}
+suspend fun <R> run(block: suspend CoroutineScope.() -> R): R =
+    withLogContext(
+        LogContext(
+            actor = cast.actor(),
+            correlationId = "op-${counter.incrementAndGet()}",
+            attributes = mapOf("tenantId" to tenant, "sessionId" to "android-demo"),
+        ),
+        block,
+    )
 ```
 
-## Automatic DAO logging (`@LogDao`)
+It demonstrates all six actor factories (`user`, `system`, `worker`,
+`automation`, `service`, `anonymous`), `withContextAttributes`-style tenant
+data, one correlation id per logical action, and `context.tenantId` selection
+in `@Log` metadata.
 
-Annotate a DAO interface with `@LogDao` and the processor generates a facade
-for its database. Wrap the database once; every opted-in DAO accessor comes
-back instrumented:
+`suppressSources` is wired as a switch so the duplicate-layer pattern is
+visible: with it on, `TaskDao.*` events are dropped before allocation while
+the `TaskRepository` event stays; with it off both layers appear.
 
-```kotlin
-@LogDao
-@Dao
-interface TaskDao {
-    @Log(action = TaskActions.CREATED)
-    @Insert suspend fun insert(task: TaskRow): Long
-}
-
-val daos = db.logged(logger)      // generated: AppDatabase_ILogged
-val taskDao = daos.taskDao()      // already wrapped with .logged(logger)
-```
-
-Only methods carrying `@Log` are recorded — actions are never derived from
-method names. `@LogDao(enabled = false)` keeps the explicit adapter but makes
-the facade return the raw DAO. `taskDao().logged(logger)` remains available.
-
-For Hilt, add `hilt = true`; the processor generates
-`<Database>_ILogged_HiltModule` and injection returns the wrapped DAO directly:
+The non-suspend `SessionCache` path uses the thread-local bridge instead:
 
 ```kotlin
-@LogDao(hilt = true)
-@Dao interface TaskDao { /* @Log methods */ }
-
-class TaskRepository @Inject constructor(private val taskDao: TaskDao) {
-    // taskDao is TaskDao_ILogger — no db.logged(logger) needed
-}
-```
-
-The binding is a `@Singleton` provider built from `db.logged(logger).taskDao()`.
-No Hilt dependency leaks into the library; Hilt must already be on the app's
-classpath, and the database/DAO must be public.
-
-Koin uses the same opt-in with `koin = true`:
-
-```kotlin
-@LogDao(koin = true)
-@Dao interface TaskDao { /* @Log methods */ }
-
-startKoin { modules(AppDatabase_ILogged_KoinModule.module, appModule) }
-```
-
-The generated `Module` resolves the database and `ILogger` from Koin; register
-both in `appModule`. No Koin dependency leaks into the library.
-
-If lifecycle telemetry is wanted, provide a `RoomLogTarget` before the logger
-and bind the DAO inside the database provider:
-
-```kotlin
-@Provides @Singleton
-fun roomLogTarget(): RoomLogTarget = RoomLogTarget(retention = RoomLogRetention.keepDays(30))
-
-@Provides @Singleton
-fun logger(target: RoomLogTarget): ILogger = ILogger.create {
-    dispatch = DispatchMode.ASYNC
-    sink(target)
-}
-
-@Provides @Singleton
-fun database(
-    @ApplicationContext context: Context,
-    logger: ILogger,
-    target: RoomLogTarget,
-): AppDatabase = Room.databaseBuilder<AppDatabase>(context, "app.db")
-    .withAuditCallback(logger)
-    .build()
-    .also { target.bind(it.logDao()) }
-```
-
-Flush when the OS may freeze the process; the injected singleton is the same
-logger the UI uses:
-
-```kotlin
-@HiltAndroidApp
-class ILoggerApplication : Application() {
-    @Inject lateinit var logger: ILogger
-
-    override fun onTrimMemory(level: Int) {
-        super.onTrimMemory(level)
-        logger.flush()
+withContext(Dispatchers.Default) {
+    LogContexts.onCurrentThread(session.threadContext()) {
+        cache.put(task)          // generated recordNow path
     }
 }
 ```
 
-## UI event buffer
+This is the correct split: generated suspend functions read the coroutine
+context; `recordNow` reads only the bridge, never the coroutine context.
 
-The display sink is a singleton so it can be injected into the activity. It
-caps at 50 lines — bounded memory even in the UI — and updates a `StateFlow`
-from the logger's worker thread; Compose collects it directly:
+## The event pipeline
 
-```kotlin
-@Singleton
-class EventBuffer @Inject constructor() {
-    private val _lines = MutableStateFlow<List<String>>(emptyList())
-    val lines: StateFlow<List<String>> = _lines
+All screens share the one `BUFFERED` logger. The live feed is a sink with a
+hard cap (`EventBuffer.MAX_EVENTS = 400`); the durable path is Room; the JSONL
+file sees only `category = "audit"`; Logcat sees only
+`category = "diagnostics"`. The `onEvents` trigger updates the dashboard off
+the producer path, and `onDispatchError` turns overflow, closed-logger drops,
+retries-exhausted and recursive dispatch into visible rows instead of silence.
 
-    val sink: LogSink = object : LogSink {
-        override suspend fun write(event: LogEvent) {
-            _lines.update { previous ->
-                (listOf(DefaultTextEventCodec.encode(event)) + previous).take(50)
-            }
-        }
-    }
-}
-```
+The **Engine lab** is the deliberate exception: each experiment creates an
+independent logger, measures it and closes it, so changing `overflow`,
+`enabled` or error modes never mutates the app's production-shaped instance.
 
-Manifest wiring is unchanged: `android:name=".logging.ILoggerApplication"`.
+## Annotated surfaces in the demo
 
-## Instrumented test: the real graph on a device
+`Domain.kt` shows the three common shapes:
 
-Unit tests cover the engine, but device tests are what prove the Android wiring
-(Room driver, Hilt scoping, generated wrapper) actually works. Hilt 2.59+
-rejects tests that run under an `@HiltAndroidApp` application, so the test
-runner boots `HiltTestApplication` instead; Hilt still aggregates the
-production `@InstallIn(SingletonComponent::class)` modules, so the injected
-`ILogger`, `AppDatabase`, `EventBuffer` and `TaskRepository` are the real
-bindings:
+- a repository contract annotated directly (`TaskRepository`) with result-derived
+  entity ids, `before`, `onFailure`, `schemaVersion`, `category`, an explicit
+  `actor` override, value expressions (`context.tenantId`, `actor.name`,
+  `'ARCHIVED'`), extractors and a manual `record` at the search boundary;
+- a Room DAO annotated with `@LogDao`, wrapped once by
+  `db.logged(logger).taskDao()`;
+- a synchronous cache whose generated `recordNow` path is bridged explicitly.
 
-```kotlin
-class ILoggerTestRunner : AndroidJUnitRunner() {
-    override fun newApplication(cl: ClassLoader, className: String, context: Context) =
-        super.newApplication(cl, HiltTestApplication::class.java.name, context)
-}
-```
+DI variants: `@LogDao(hilt = true)` removes even the manual
+`db.logged(logger)` line. It is demonstrated by
+[`HiltDaoBindingsTest`](../app/src/androidTest/java/com/mohamed/dev/ui/ilogger/logging/HiltDaoBindingsTest.kt);
+the generated Koin module is covered by
+[`KoinDaoBindingsTest`](../app/src/androidTest/java/com/mohamed/dev/ui/ilogger/logging/KoinDaoBindingsTest.kt).
+You do not need multiple app modules to adopt either DI style.
 
-```kotlin
-// app/build.gradle.kts
-android.defaultConfig.testInstrumentationRunner =
-    "com.mohamed.dev.ui.ilogger.logging.ILoggerTestRunner"
-```
-
-[`RoomLoggingInstrumentedTest`](../app/src/androidTest/java/com/mohamed/dev/ui/ilogger/logging/RoomLoggingInstrumentedTest.kt)
-then emits through the injected repository, flushes the logger, and asserts the
-row through both the injected DAO and a second connection to the same database
-file — so a stubbed sink or in-memory fake cannot pass:
+## Run it
 
 ```bash
+./gradlew :app:installDebug
+adb shell am start -n com.mohamed.dev.ui.ilogger/.MainActivity
+
+# JVM check: the same TestKit suite the in-app screen runs
+./gradlew :app:testDebugUnitTest
+
+# Device tests: real Hilt graph + real Room file + generated bindings
 ./gradlew :app:connectedDebugAndroidTest
-# or just this test:
-./gradlew :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=com.mohamed.dev.ui.ilogger.logging.RoomLoggingInstrumentedTest
 ```
 
-## Annotation-first repositories in the app
+The three instrumented tests are the proof that the wiring is real:
 
-Same as any other module: `ksp(project(":ilogger-ksp"))` on the Android
-module (tested with AGP 9.4.1) and the usual shape:
+| Test | Proves |
+|---|---|
+| `RoomLoggingInstrumentedTest` | The injected repository writes through the real logger into the on-device Room file; a second `Room.databaseBuilder` connection sees the row; the injected non-suspend `SessionCache` proves `recordNow` is wrapped in DI |
+| `HiltDaoBindingsTest` | `@LogDao(hilt = true)` generates a module that injects an already-wrapped DAO, no `db.logged(...)` at the call site |
+| `KoinDaoBindingsTest` | `@LogDao(koin = true)` returns the wrapped DAO from a real Koin container |
 
-```kotlin
-interface TaskRepository {
+Hilt rejects tests that run under `@HiltAndroidApp`, so
+[`ILoggerTestRunner`](../app/src/androidTest/java/com/mohamed/dev/ui/ilogger/logging/ILoggerTestRunner.kt)
+boots `HiltTestApplication`; Hilt still aggregates the production modules, so
+the injected logger/database/repository are the app's real singletons.
 
-    @Log(action = TaskActions.CREATED, entity = Task::class,
-         metadata = [LogMeta("title")])
-    suspend fun create(title: String): Long
+## Production notes
 
-    @Log(action = TaskActions.RENAMED, entity = Task::class,
-         metadata = [LogMeta("task.title")],
-         changes = [LogChange(field = "title", from = "task.title", to = "newTitle")])
-    suspend fun update(task: Task, newTitle: String): Boolean
-
-    @Log(action = TaskActions.FAILED, entity = Task::class)
-    suspend fun explode(taskId: Long)
-}
-```
-
-The Hilt module wraps the implementation once with `.logged(logger)`, so no
-screen or view model has to remember the wrapper.
-
-## Sensitive values on mobile
-
-```kotlin
-data class Task(
-    val id: Long,
-    val title: String,
-    @LogSensitive val passwordHash: String = "",
-)
-
-LogMeta("task.passwordHash", name = "passwordHashHashed",
-        sensitive = SensitiveHandling.HASH)
-```
-
-The COMPILE TIME refusal list (defense in depth over names like
-`accessToken`) is fully active on Android sources too.
-
-## Should your audits go to disk?
-
-Storage options compared for a mobile host:
-
-| Option | Pros | Cons | Verdict |
-|---|---|---|---|
-| Room (`roomLogs`) | Queryable history, indexes on `ts`/`level`/`action`, retention sweep built-in | Needs a database (usually already present in an app) | **🏆 Recommended** for apps that display or query audits |
-| JSONL `TextFileSink` + rotation | Append-only forensics; trivially shipped off-device | Row-level queries are manual (grep/tail) | Right default when the app only ships files |
-| Both (Room + file) | Field forensics + in-app viewer | Two destinations to size (`bufferSize`!) | Only when a real compliance need exists |
-
-The demo persists to Room (`roomLogs`), which is the right default when the app
-needs to query or display events. For append-only forensics with rotation and
-off-device upload, the alternative shape is: audit category → JSONL
-`TextFileSink` with rotation into `context.filesDir`, and let an upload job tail
-the files — the same routing the server examples use.
-
-### Flushing the audit buffer on Android
-
-| Trigger | How | Trade-off | Verdict |
-|---|---|---|---|
-| `Application.onTrimMemory` | `logger.flush()` (demo) | Fires before freeze/kill scenarios | **🏆 Recommended** — cheap, official lifecycle hook |
-| `Activity.onDestroy` | `logger.flush()` | Per-screen churn; flushes too often | Only for single-activity legends |
-| Periodic WorkManager job | flush + upload JSONL | Durable upload cadence; drains the pipeline | Pair with the file path for off-device shipping |
+- Flush on `Application.onTrimMemory` (the demo does). Use `flush()`/`close()`
+  only from the owner; the logger is a singleton, not a per-screen object.
+- `BUFFERED` + `DROP_OLDEST` is the mobile default: bounded memory and
+  recency under a flood. Use `BLOCK` only off the main thread, and
+  `INLINE`/`PROPAGATE` only when missing the audit is worse than failing the
+  operation.
+- Keep `@Log` on the interface and wrap the implementation once in DI. Never
+  wrap inside a screen, view model or repository method.
+- Keep audit and JSONL on their own categories; do not let diagnostic noise
+  bloat the forensic file.
+- Display sensitive values only on explicit user action, even in a demo. The
+  Protection screen hides the raw note behind a reveal control and verifies the
+  emitted event contains only the hash and mask.
 
 ## What NOT to do on Android
 
-- Do not `INLINE` in production dispatch; main-thread jank risk.
-- Do not spawn application-level contexts per screen: global ambient context
-  with explicit `withActor(...)` per interaction as the demo does.
-- Do not log PII (location, contacts...) no matter what — the sensitive DSL
-  will refuse at compile time but that is a guard, not a permission.
+- Do not block the main thread with `INLINE` dispatch in production.
+- Do not create a logger (or a Room database) per screen.
+- Do not pass raw sensitive values as metadata "just for debugging"; the
+  processor accepts only explicit MASK/HASH policies, but that is a guard, not
+  permission to log PII.
+- Do not rely on `minLevel` to silence audit events — it filters diagnostics
+  only. Use `enabled` (or `ILogger.disabled`) when auditing is intentionally off.

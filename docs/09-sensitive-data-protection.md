@@ -79,19 +79,36 @@ is a compile error with a suggestion to apply the policy inside the extractor.
 ## Worked example (from `:app`)
 
 ```kotlin
-metadata = [
-    LogMeta("task.title"),
-    LogMeta("task.passwordHash", name = "passwordHashHashed",
-            sensitive = SensitiveHandling.HASH),
-],
+data class Task(
+    val id: Long,
+    val title: String,
+    @LogSensitive(reason = "Private notes may contain personal data")
+    val privateNote: String = "",
+)
+
+@Log(
+    action = TaskActions.ARCHIVED,
+    schemaVersion = 2,
+    category = "audit",
+    metadata = [
+        // The same value, explicitly selected under two policies.
+        LogMeta("task.privateNote", name = "noteFingerprint", sensitive = SensitiveHandling.HASH),
+        LogMeta("task.privateNote", name = "noteMasked", sensitive = SensitiveHandling.MASK),
+        LogMeta("task.title"),
+    ],
+)
+suspend fun archive(task: Task): Boolean
 ```
 
-Event on console (text codec) shows a hashed blob — never the raw value; the
-JSONL file stores the same hash:
+Event on console (text codec) shows only the projections — never the raw note;
+the JSONL file stores the same hash and mask:
 
 ```json
-"metadata":{"title":"repair coffee machine #1","passwordHashHashed":"<digest>"}
+"metadata":{"noteFingerprint":"<24-hex-digest>","noteMasked":"***","title":"repair coffee machine #1"}
 ```
+
+The `:app` Protection screen emits exactly this event and checks that the raw
+note does not occur anywhere in the event JSON.
 
 ## Runtime sinks: less privileged than compile-time
 
