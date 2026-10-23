@@ -43,7 +43,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Gradle (caching + wrapper validation)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
 
@@ -131,7 +131,7 @@ jobs:
       # No explicit SDK setup: ubuntu-latest ships the Android SDK with
       # licenses accepted; AGP auto-downloads missing platform/build-tools.
       - name: Set up Gradle (caching + wrapper validation)
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           validate-wrappers: true
 
