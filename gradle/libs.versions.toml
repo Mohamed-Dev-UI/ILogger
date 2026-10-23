@@ -36,7 +36,7 @@ okhttp = "4.12.0"
 opentelemetry = "1.43.0"
 benchmark = "0.5.0"
 # Hilt 2.59+ is required for AGP 9 (2.58 fails applying the plugin).
-hilt = "2.59.2"
+hilt = "2.60.1"
 koin = "4.2.2"
 # Quality gates (G-42): coverage, published-API compatibility, API docs.
 kover = "0.9.11"
