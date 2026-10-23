@@ -17,7 +17,7 @@ workManager = "2.11.2"
 activityCompose = "1.8.0"
 composeBom = "2026.02.01"
 coroutines = "1.11.0"
-serializationJson = "1.11.0"
+serializationJson = "1.12.0"
 # KotlinPoet 2.2.0 is the newest release whose metadata is readable by the
 # pinned Kotlin 2.2.x compiler (later releases ship Kotlin 2.4 metadata).
 kotlinpoet = "2.2.0"
