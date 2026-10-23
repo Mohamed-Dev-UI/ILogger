@@ -2,7 +2,7 @@
 agp = "9.4.1"
 kotlin = "2.2.10"
 ksp = "2.3.12"
-coreKtx = "1.10.1"
+coreKtx = "1.19.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 # The runner is packaged into the androidTest APK that declares
@@ -13,9 +13,9 @@ lifecycleRuntimeKtx = "2.6.1"
 # lifecycle-process backs the G-28 Android module; it is compatible with the
 # older runtime-ktx used by the reference app.
 lifecycleProcess = "2.9.4"
-workManager = "2.11.2"
+workManager = "2.12.0"
 activityCompose = "1.8.0"
-composeBom = "2026.02.01"
+composeBom = "2026.09.00"
 coroutines = "1.11.0"
 serializationJson = "1.11.0"
 # KotlinPoet 2.2.0 is the newest release whose metadata is readable by the
