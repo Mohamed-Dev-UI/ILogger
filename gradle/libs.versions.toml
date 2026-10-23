@@ -28,7 +28,7 @@ ktor = "3.6.0"
 # Logback 1.5 is the reference inbound appender host. Both are opt-in: the
 # bridge modules compile against them without forcing them onto consumers.
 slf4j = "2.0.17"
-logback = "1.5.18"
+logback = "1.6.5"
 # Test-only HTTP server for the remote sink (G-29); not a runtime dependency.
 okhttp = "4.12.0"
 # OpenTelemetry (G-33). The API is compile-only for consumers, like SLF4J:
