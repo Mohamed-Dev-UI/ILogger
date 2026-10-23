@@ -179,19 +179,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download library jars
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: maven-jars
           path: maven-jars
 
       - name: Download demo APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: demo-apk
           path: demo-apk
 
       - name: Download API docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: api-docs
           path: api-docs
