@@ -47,9 +47,15 @@ public class Actor private constructor(
         }
     }
 
+    /** Internal projection used by the resource-limit sanitizer; preserves the type. */
+    internal fun copyWith(
+        id: String? = this.id,
+        name: String? = this.name,
+        attributes: Map<String, String> = this.attributes,
+    ): Actor = Actor(id, type, name, attributes)
+
     override fun equals(other: Any?): Boolean =
         other is Actor && other.id == id && other.type == type && other.name == name && other.attributes == attributes
-
     override fun hashCode(): Int {
         var result = id?.hashCode() ?: 0
         result = 31 * result + type.hashCode()

@@ -11,6 +11,19 @@ delegate first and only *then* reports success — success events never lie.
 | `SUCCESS` | operation completed normally | default (`onSuccess = true`) |
 | `FAILURE` | operation threw | with `onFailure = true` |
 
+## Cancellation
+
+A `CancellationException` is caught before the generic failure branch:
+
+| `onCancellation` | Event | Exception |
+|---|---|---|
+| `SKIP` (default) | none | rethrown by identity |
+| `LOG` | FAILURE with `failure.cancelled = true` | rethrown by identity; any logging error is attached as a suppressed exception |
+
+Cancellation events are recorded through `recordNow` with `ASYNC` admission so
+a cancelled coroutine never blocks on delivery and logging can never mask the
+cancellation.
+
 ## Order with `before = true`
 
 ```
@@ -45,12 +58,14 @@ LogContexts.onCurrentThread(LogContext(actor = actor)) {
 }
 ```
 
-`recordNow` cannot deliver events synchronously: passing
-`dispatch = DispatchMode.INLINE` throws `IllegalStateException`
-("recordNow cannot use INLINE dispatch; use the suspend record() for
-synchronous delivery"). Non-suspend overrides always emit an explicit
-`dispatch = DispatchMode.<MODE>` because `recordNow`'s runtime default is
-`ASYNC`, not the engine configuration.
+`recordNow` supports `INLINE` with a bounded blocking bridge: the event is
+written before the call returns, or dropped as `SINK_FAILURE` when the sink
+exceeds `blockTimeoutMillis`. Use `recordBlocking(...)` when you need an
+explicit timeout and want to know whether delivery succeeded. Non-suspend
+overrides always emit an explicit `dispatch = DispatchMode.<MODE>` because
+`recordNow`'s runtime default is `ASYNC`, not the engine configuration; the
+annotation processor still rejects `@Log(dispatch = INLINE)` on non-suspend
+functions (use `recordBlocking` manually if synchronous delivery is required).
 
 ## The failure payload
 

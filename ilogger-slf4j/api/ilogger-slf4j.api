@@ -1,0 +1,22 @@
+public final class io/ilogger/slf4j/ILoggerAppender : ch/qos/logback/core/AppenderBase {
+	public fun <init> (Lio/ilogger/core/ILogger;Ljava/lang/String;Ljava/util/Set;ZZLio/ilogger/annotations/DispatchMode;JLkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lio/ilogger/core/ILogger;Ljava/lang/String;Ljava/util/Set;ZZLio/ilogger/annotations/DispatchMode;JLkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public synthetic fun append (Ljava/lang/Object;)V
+}
+
+public final class io/ilogger/slf4j/Slf4jLogSink : io/ilogger/core/LogSink {
+	public static final field BRIDGE_LOGGER_PREFIX Ljava/lang/String;
+	public static final field Companion Lio/ilogger/slf4j/Slf4jLogSink$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Lio/ilogger/core/sink/EventCodec;Lorg/slf4j/event/Level;Lorg/slf4j/ILoggerFactory;)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/ilogger/core/sink/EventCodec;Lorg/slf4j/event/Level;Lorg/slf4j/ILoggerFactory;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getLoggerName ()Ljava/lang/String;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/slf4j/Slf4jLogSink$Companion {
+}
+

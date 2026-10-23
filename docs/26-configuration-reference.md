@@ -74,27 +74,43 @@ application configuration → library defaults**.
 | `enabled` | `Boolean` | `true` | Master switch; `false` skips all dispatch (cheapest check, no allocation). |
 | `minLevel` | `LogLevel` | `TRACE` | Floor for the *diagnostic* methods `trace..error`. See the caveat below — it does **not** gate `record()`/`recordNow()`. |
 | `clock` | `LogClock` | `SystemClock` | `timestampMillis` source. Swap with `FixedClock(...)` in tests. |
-| `idGenerator` | `EventIdGenerator` | `UuidEventIdGenerator` | Mints `LogEvent.id`. Swap with `SequentialIdGenerator()` (from `ilogger-testing`) in tests. |
+| `idGenerator` | `EventIdGenerator` | `UuidEventIdGenerator` | Mints `LogEvent.id` as an RFC 4122 v4 UUID (fast `ThreadLocalRandom` source, not `SecureRandom`). Swap with `SequentialIdGenerator()` (from `ilogger-testing`) in tests, or inject a `SecureRandom`-backed generator when unpredictability matters. |
 | `actorProvider` | `ActorProvider` | `{ null }` | Last-resort actor resolution (after the explicit parameter and ambient `LogContext`). Must be thread-safe and cheap. |
 | `dispatch` | `DispatchMode` | `BUFFERED` | Engine-wide mode for events that do not request `INLINE` per call. |
 | `overflow` | `OverflowPolicy` | `DROP_NEWEST` | What happens when the bounded queue is full (see [16](16-dispatch-backpressure-error-modes.md)). |
-| `bufferSize` | `Int` | `4096` | Capacity of the async pipeline, in **events**. Finite by design. |
-| `batchSize` | `Int` | `128` | Events per batch under `BUFFERED` dispatch. |
+| `bufferSize` | `Int` | `4096` | Capacity of **each binding's** async queue, in events. Finite by design. |
+| `batchSize` | `Int` | `128` | Events per batch under `BUFFERED` dispatch (capped by queued events). |
 | `flushIntervalMillis` | `Long` | `250` | Max age of a partial batch before the worker flushes it. |
-| `workerDispatcher` | `CoroutineDispatcher?` | `null` | Dispatcher for the pipeline worker (see below). |
+| `workerDispatcher` | `CoroutineDispatcher?` | `null` | Dispatcher for pipeline workers (see below). |
+| `sinkConcurrency` | `Int` | `1` | Workers per binding. `1` preserves per-sink ordering; `>1` processes one binding concurrently (ordering becomes best-effort). |
+| `blockTimeoutMillis` | `Long` | `5_000` | Upper bound for `BLOCK` admission and for inline delivery from `recordNow`/`recordBlocking`. |
 | `closeTimeoutMillis` | `Long` | `5_000` | Budget for `flush()` and `close()` draining. |
-| `sampler` | `LogSampler?` | `null` | Diagnostic sampling (see [17](17-sampling.md)); audit events are never sampled unless configured explicitly at the application level. |
+| `sampler` | `LogSampler?` | `null` | Legacy two-argument diagnostic sampler (see [17](17-sampling.md)); audit events are gated by `auditSampling`. |
+| `contextualSampler` | `ContextualSampler?` | `null` | Preferred sampler SPI: receives level, real action, category, outcome and metadata. |
+| `auditSampling` | `Boolean` | `false` | Allows the configured sampler to decide audit events. `sampling(...)` enables it when an `AUDIT` rate is listed. |
+| `strictMode` | `StrictMode` | `OFF` | Payload validation at admission: `OFF`, `WARN` (drop + report `STRICT_REJECT`) or `THROW` (also throws `IllegalArgumentException`). |
+| `strictMaxStringLength` | `Int` | `1024` | Max characters for metadata keys/values, actor fields, and top-level entity/source/category strings. |
+| `strictMaxEntries` | `Int` | `64` | Max entries in metadata, actor attributes, changes, and nested collections. |
+| `strictMaxEventBytes` | `Int` | `65536` | Approximate payload budget (string characters + 8 bytes per scalar). |
+| `limits` | `EventLimits?` | `null` | Resource-limit policy applied to **every** event before dispatch: `maxEventBytes`, `maxStringLength`, `maxEntries`, `maxActorAttributes`, `maxFailureFrames`, and `action` = `REJECT` (drop + report `STRICT_REJECT`) or `TRUNCATE` (bound in place and count in `DeliveryStats.truncated`). See [24](24-limits-and-constraints.md). |
+| `redaction` | `RedactionPolicy?` | `null` | Runtime redaction rules for manual payloads: metadata values, change values and actor attributes. Runs after value rendering and source suppression, **before** limits, sampling and sinks. Built-in rules: `RedactionRules.secretKeys/email/card/phone/bearer`. See [09](09-sensitive-data-protection.md). |
 | `retryMaxAttempts` | `Int` | `3` | Retries per event write for `ErrorMode.RETRY` levels. |
 | `retryBaseBackoffMillis` | `Long` | `50` | Base of the exponential retry backoff (see formula). |
-| `onDispatchError` | `((LogEvent?, LogSink?, Throwable) -> Unit)?` | `null` | Observer for engine-level failures: overflowing logs, closed-logger drops, recursion drops, flush failures. |
+| `onDispatchError` | `((LogEvent?, LogSink?, Throwable) -> Unit)?` | `null` | Observer for engine-level failures: sink exceptions, recursion drops, dead-letter overflow, flush failures. |
+| `onDrop` | `((DroppedEvent) -> Unit)?` | `null` | Synchronous observer for every lost delivery, with its `DropReason`. Keep it cheap and non-blocking. |
 
 Methods:
 
 | Method | Effect |
 |---|---|
 | `sink(sink: LogSink, category: String? = null)` | Appends a binding. `category = null` binds as **catch-all** (receives every category plus its own). |
-| `sampling(vararg rates: Pair<LogLevel, Double>)` | Replaces `sampler` with a `LevelSampler`; levels not listed run unsampled (rate 1.0). |
+| `deadLetter(sink: DeadLetterSink)` / `deadLetter(sink: LogSink)` | Routes lost events (with reason) to a bounded background pipeline. |
+| `sampling(vararg rates: Pair<LogLevel, Double>)` | Replaces the sampler with a `LevelSampler`; levels not listed run unsampled (rate 1.0). Listing `AUDIT` enables `auditSampling`. |
+| `sampling(sampler: ContextualSampler)` | Replaces the sampler with a context-aware implementation (`ActionSampler`, `CategorySampler`, `RateLimitSampler`, `TokenBucketRateLimiter`, `AdaptiveSampler`, `CompositeSampler`, or custom). |
 | `onErrorMode(level: LogLevel, mode: ErrorMode)` | Sets per-level sink-failure behavior (see defaults below). |
+| `extractor(type, factory)` / `extractor(type, instance)` | Registers a DI extractor for annotation-named extractors declared with `LogMeta(..., inject = true)`, and overrides the no-arg fallback for others. Each type resolves once per logger (see [10](10-extractors.md)). |
+| `valueAdapter(type, render)` | Registers a runtime adapter for manual `record(...)` values by exact runtime class. |
+| `enricher(enricher: LogEventEnricher)` | Appends an admission-time enricher that contributes metadata before rendering (e.g. `OtelTraceEnricher` adds `trace.traceId`/`trace.spanId`). Enrichers run on the producer thread, so thread-local state (the current OTel span) is still valid; explicit metadata wins over enriched keys, and earlier enrichers win over later ones. A throwing enricher is reported to `onDispatchError` and skipped. See [35](35-opentelemetry.md). |
 
 ### Per-level failure behavior — defaults
 
@@ -129,11 +145,13 @@ dropped. Raise `retryBaseBackoffMillis` for network sinks; raise
 | Invariant | Message |
 |---|---|
 | `bufferSize > 0` | `bufferSize must be positive` |
-| `batchSize in 1..bufferSize` | `batchSize must be within 1..bufferSize` |
+| `batchSize >= 1` | `batchSize must be >= 1` |
 | `flushIntervalMillis >= 0` | `flushIntervalMillis must be >= 0` |
 | `closeTimeoutMillis >= 0` | `closeTimeoutMillis must be >= 0` |
 | `retryMaxAttempts >= 0` | `retryMaxAttempts must be >= 0` |
 | `retryBaseBackoffMillis >= 0` | `retryBaseBackoffMillis must be >= 0` |
+| `sinkConcurrency >= 1` | `sinkConcurrency must be >= 1` |
+| `blockTimeoutMillis >= 0` | `blockTimeoutMillis must be >= 0` |
 
 All violations occur at `ILogger.create { }` time — a misconfigured engine
 never starts half-valid.
@@ -150,16 +168,15 @@ never starts half-valid.
 This asymmetry is deliberate: min level is a *diagnostics* knob, not an
 accountability knob.
 
-### `workerDispatcher`
+### `workerDispatcher` and `sinkConcurrency`
 
-The async pipeline runs on one worker coroutine. By default it gets a
-single-threaded view of `Dispatchers.Default` named `ilogger-worker`.
-`workerDispatcher` is only worth setting for two reasons:
+Each binding owns a bounded queue and one or more workers. By default every
+binding gets `sinkConcurrency` workers on a named `Dispatchers.IO` view
+(`ilogger-sink-<index>`), so blocking file/DB sinks cannot starve the whole
+engine and one slow sink cannot delay another binding.
 
-1. **Android priority/scheduling** — run audit persistence on a dedicated
-   dispatcher so it cannot compete with frame-time work.
-2. **Test determinism** — hand in a test dispatcher instead of controlling
-   real-time draining.
+`workerDispatcher` overrides the dispatcher for all binding workers — mainly
+useful for Android priority/scheduling or test determinism:
 
 ```kotlin
 ILogger.create {
@@ -168,21 +185,22 @@ ILogger.create {
 }
 ```
 
-Do **not** use a multi-threaded dispatcher expecting parallel sink writes:
-the engine is deliberately serial per binding so batching, ordering and error
-policy stay understandable.
+Keep `sinkConcurrency = 1` unless the sink is safe under concurrent writes:
+ordering is only guaranteed at `1`. Raising it also makes flush stronger
+(the engine waits for full idleness rather than per-event completion).
 
 ## Worker lifecycle
 
-- The worker starts **lazily** on the first asynchronous event; a logger that
-  only receives `INLINE` events never starts one.
-- `flush()` is *best-effort* under `closeTimeoutMillis`: it enqueues a flush
-  marker, waits for it, and falls back to flushing bindings directly.
-  Ordering relative to producers is never guaranteed (enqueue never blocks).
-- `close()` is idempotent: closes the queue, lets the worker drain within
-  `closeTimeoutMillis`, cancels the worker scope, then closes every distinct
-  sink (binding deduped). After close, events are discarded and the drop is
-  reported through `onDispatchError`.
+- Workers start **lazily** per binding on the first asynchronous event; a
+  logger that only receives `INLINE` events never starts one.
+- `flush(timeoutMillis)` is a true watermark barrier: it waits for events
+  admitted before the call, then flushes every distinct sink. The no-arg
+  `flush()` uses `closeTimeoutMillis`. `awaitIdle(...)` waits without
+  flushing sinks.
+- `closeAndReport()`/`close()` are idempotent: close every queue, drain within
+  `closeTimeoutMillis`, flush and close every distinct sink and the
+  dead-letter sink, and return/collect `sinkFailures`. After close, events are
+  discarded and reported with `DropReason.CLOSED`.
 
 A good hygiene rule: whoever creates a logger closes it — typically at the end
 of `main`, in `Application.onTerminate`, or in a DI-scoped `@AfterComponent`.
@@ -225,6 +243,10 @@ ILogger.create {
     closeTimeoutMillis = 10_000
 }
 ```
+
+Shipping the same events to a collector? Add `sink(RemoteLogSink(...))` under
+the durable file sink — the remote sink has its own spool and retries, so it
+does not need `ErrorMode.RETRY` ([33](33-remote-sink.md)).
 
 ### Android — small buffer, Room, retention, flush on lifecycle
 

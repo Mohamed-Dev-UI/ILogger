@@ -13,7 +13,7 @@ mavenPublishing {
     }
     pom {
         name.set("ilogger-ktor")
-        description.set("Ktor plugin: request audit and request-scoped ambient context for ILogger")
+        description.set("Ktor plugins: server request audit, outbound client audit and request-scoped ambient context for ILogger")
         inceptionYear.set("2026")
         url.set("https://github.com/Mohamed-Dev-UI/ILogger")
         licenses {
@@ -48,9 +48,13 @@ dependencies {
     // Ktor server types are part of this module's public API surface
     // (ApplicationPlugin / ApplicationCall), so they are exposed to consumers.
     api(libs.ktor.server.core)
+    // The client plugin's public API exposes HttpClientPlugin/HttpRequestBuilder.
+    api(libs.ktor.client.core)
 
     testImplementation(libs.junit)
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.mock)
+    testImplementation(project(":ilogger-testing"))
 }
 
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {

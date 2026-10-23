@@ -3,11 +3,13 @@
 #     git tag -a v0.1.0 -m "..." && git push origin v0.1.0
 #
 # Pipeline:
-#   1. jvm     — full JVM build & test, publish all ilogger-* artifacts to
-#                GitHub Packages (maven.pkg.github.com), collect the jars.
-#   2. android — assemble the debug demo APK.
+#   1. jvm     — full JVM build & test, publish all ilogger-* artifacts
+#                (including the Gradle plugin and its marker) to GitHub
+#                Packages (maven.pkg.github.com), collect the jars.
+#   2. android — assemble the debug demo APK, build the Dokka API docs and
+#                package them as `api-docs.zip`.
 #   3. release — create the GitHub release with generated notes and attach
-#                every library jar + the demo APK.
+#                every library jar, the API docs bundle and the demo APK.
 #
 # GitHub Packages publication needs `packages: write`; the release steps need
 # `contents: write` (both are declared at workflow level).
@@ -45,6 +47,9 @@ jobs:
         with:
           validate-wrappers: true
 
+      - name: Test Gradle plugin (TestKit fixtures)
+        run: ./gradlew -p ilogger-gradle-plugin test --console=plain
+
       - name: Build & test all JVM modules
         run: >
           ./gradlew
@@ -55,14 +60,18 @@ jobs:
           :ilogger-room:build
           :ilogger-serialization:build
           :ilogger-ktor:build
+          :ilogger-bom:build
           :ksp-tests:test
           :ksp-diagnostics:test
           :ksp-diagnostics-di:test
+          :ksp-diagnostics-warnings:test
+          :ksp-diagnostics-options:test
           :examples:basic:build
           :examples:room:build
           :examples:custom-sink:build
           :examples:server:build
           :examples:advanced-audit:build
+          :examples:gradle-plugin:build
           :benchmark:build
 
       - name: Publish to GitHub Packages (env-gated)
@@ -78,7 +87,9 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
+        run: |
+          ./gradlew publishAllPublicationsToGitHubPackagesRepository
+          ./gradlew -p ilogger-gradle-plugin publishAllPublicationsToGitHubPackagesRepository
 
       - name: Publish + release to Maven Central
         env:
@@ -86,7 +97,9 @@ jobs:
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.MAVEN_CENTRAL_SIGNING_KEY_PASSWORD }}
-        run: ./gradlew publishAndReleaseToMavenCentral
+        run: |
+          ./gradlew publishAndReleaseToMavenCentral
+          ./gradlew -p ilogger-gradle-plugin publishAndReleaseToMavenCentral
 
       - name: Collect library jars
         if: always()
@@ -125,6 +138,22 @@ jobs:
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
 
+      # Dokka covers every published artifact, including ilogger-android, so
+      # this job owns the docs build (it has the Android SDK).
+      - name: Build API docs (Dokka)
+        run: ./gradlew dokkaGenerate --console=plain
+
+      - name: Package API docs
+        run: |
+          mkdir -p dist/api-docs
+          for dir in ilogger-*/build/dokka/html; do
+            [ -d "$dir" ] || continue
+            module="${dir%%/build/*}"
+            mkdir -p "dist/api-docs/$module"
+            cp -R "$dir/." "dist/api-docs/$module/"
+          done
+          cd dist && zip -qr api-docs.zip api-docs
+
       - name: Collect demo APK
         run: |
           mkdir -p dist
@@ -135,6 +164,13 @@ jobs:
         with:
           name: demo-apk
           path: dist/ILogger-demo-debug.apk
+          if-no-files-found: error
+
+      - name: Upload API docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-docs
+          path: dist/api-docs.zip
           if-no-files-found: error
 
   release:
@@ -154,6 +190,12 @@ jobs:
           name: demo-apk
           path: demo-apk
 
+      - name: Download API docs
+        uses: actions/download-artifact@v4
+        with:
+          name: api-docs
+          path: api-docs
+
       - name: Create release and attach artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -162,7 +204,7 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             # re-published tag: keep the existing release, replace assets
             gh release upload "$GITHUB_REF_NAME" \
-              maven-jars/* demo-apk/* \
+              maven-jars/* demo-apk/* api-docs/* \
               --clobber
             # a pre-existing release may be a draft (created before this
             # policy); publishing is idempotent for already-public releases
@@ -173,6 +215,6 @@ jobs:
               --title "ILogger $GITHUB_REF_NAME" \
               --generate-notes
             gh release upload "$GITHUB_REF_NAME" \
-              maven-jars/* demo-apk/* \
+              maven-jars/* demo-apk/* api-docs/* \
               --clobber
           fi

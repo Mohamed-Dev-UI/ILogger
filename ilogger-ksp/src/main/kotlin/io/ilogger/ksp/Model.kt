@@ -6,7 +6,7 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
 
 /** How a selected chain value's sensitivity is treated (mirrors SensitiveHandling). */
-internal enum class SensitiveMode { ID, CHANGE, META_DENY, META_MASK, META_HASH }
+internal enum class SensitiveMode { ID, CHANGE, META_DENY, META_OMIT, META_MASK, META_HASH }
 
 /**
  * A compile-time-resolved source expression (see `@Log` KDoc for the grammar).
@@ -36,7 +36,11 @@ internal sealed class ResolvedExpr {
 }
 
 /** Resolved property chain of a validated [ResolvedExpr.Param] / [ResolvedExpr.Result]. */
-internal class ChainInfo(val properties: List<KSPropertyDeclaration>)
+internal class ChainInfo(
+    val properties: List<KSPropertyDeclaration>,
+    /** True when the function returned `Result<T>` and the chain walks T (rendered via `getOrNull()`). */
+    val resultUnwrapped: Boolean = false,
+)
 
 /** True when the expression reads the operation result (unavailable on START/FAILURE events). */
 internal val ResolvedExpr.usesResult: Boolean get() = this is ResolvedExpr.Result
@@ -46,6 +50,11 @@ internal class ResolvedMeta(
     val expr: ResolvedExpr,
     val sensitiveMode: SensitiveMode,
     val extractorFqn: String?, // null = no extractor
+    val adapterFqn: String? = null, // null = no ValueAdapter
+    /** `extractor` must come from the logger's ExtractorRegistry (no fallback). */
+    val extractorInjected: Boolean = false,
+    /** The extractor is an object; its fallback expression is the object name itself. */
+    val extractorIsObject: Boolean = false,
 )
 
 internal class ResolvedChange(
@@ -59,6 +68,10 @@ internal class ParameterModel(
     val index: Int,
     val type: KSType,
     val vararg: Boolean,
+    /** `@LogSensitive` on the parameter or its type. */
+    val sensitive: Boolean = false,
+    /** `@LogExclude` on the parameter or its type. */
+    val excluded: Boolean = false,
 )
 
 /**
@@ -66,8 +79,11 @@ internal class ParameterModel(
  */
 internal class ResolvedOp(
     val fn: KSFunctionDeclaration,
-    val interfaceDecl: KSClassDeclaration,
-    val interfacePackage: String,
+    /** Declaring interface/class, or null for top-level functions. */
+    val containerDecl: KSClassDeclaration?,
+    val containerPackage: String,
+    /** Non-null for top-level extension functions; not addressable in source expressions. */
+    val extensionReceiverType: KSType?,
     val suspendFn: Boolean,
     val unitReturn: Boolean,
     val returnType: KSType,
@@ -81,17 +97,20 @@ internal class ResolvedOp(
     val entityName: String?,
     val entityId: ResolvedExpr?,
     val actor: ResolvedExpr?,
+    /** Policy applied to a sensitive actor override: `META_MASK`, `META_HASH` or `META_DENY` (plain). */
+    val actorSensitiveMode: SensitiveMode = SensitiveMode.META_DENY,
     val metadata: List<ResolvedMeta>,
     val changes: List<ResolvedChange>,
     val before: Boolean,
     val onSuccess: Boolean,
     val onFailure: Boolean,
+    val onCancellation: String,
     val description: String,
     val source: String,
     val usesContext: Boolean,
 ) {
-    /** Interface simple name; used for generated wrapper names. */
-    val interfaceName: String get() = interfaceDecl.simpleName.asString()
+    /** Container simple name (interface/class); null for top-level functions. */
+    val containerName: String? get() = containerDecl?.simpleName?.asString()
 
     /** Whether any selected value needs the result; result is absent on START/FAILURE events. */
     val needsResult: Boolean

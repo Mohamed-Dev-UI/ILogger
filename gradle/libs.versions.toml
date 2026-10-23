@@ -5,8 +5,15 @@ ksp = "2.3.12"
 coreKtx = "1.10.1"
 junit = "4.13.2"
 junitVersion = "1.1.5"
+# The runner is packaged into the androidTest APK that declares
+# androidx.test.runner.AndroidJUnitRunner; ext:junit does not bring it in.
+androidxTestRunner = "1.5.2"
 espressoCore = "3.5.1"
 lifecycleRuntimeKtx = "2.6.1"
+# lifecycle-process backs the G-28 Android module; it is compatible with the
+# older runtime-ktx used by the reference app.
+lifecycleProcess = "2.9.4"
+workManager = "2.11.2"
 activityCompose = "1.8.0"
 composeBom = "2026.02.01"
 coroutines = "1.11.0"
@@ -17,17 +24,34 @@ kotlinpoet = "2.2.0"
 room = "2.8.5"
 sqliteBundled = "2.7.1"
 ktor = "3.6.0"
+# Logging bridges (G-32). SLF4J 2.x fluent API is used for key/value context;
+# Logback 1.5 is the reference inbound appender host. Both are opt-in: the
+# bridge modules compile against them without forcing them onto consumers.
+slf4j = "2.0.17"
+logback = "1.5.18"
+# Test-only HTTP server for the remote sink (G-29); not a runtime dependency.
+okhttp = "4.12.0"
+# OpenTelemetry (G-33). The API is compile-only for consumers, like SLF4J:
+# ilogger-otel never forces an OTel version onto the host application.
+opentelemetry = "1.43.0"
 benchmark = "0.5.0"
 # Hilt 2.59+ is required for AGP 9 (2.58 fails applying the plugin).
 hilt = "2.59.2"
 koin = "4.2.2"
+# Quality gates (G-42): coverage, published-API compatibility, API docs.
+kover = "0.9.11"
+bcv = "0.18.2"
+dokka = "2.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
+androidx-lifecycle-process = { group = "androidx.lifecycle", name = "lifecycle-process", version.ref = "lifecycleProcess" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -59,6 +83,16 @@ hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testi
 ktor-server-core = { group = "io.ktor", name = "ktor-server-core", version.ref = "ktor" }
 ktor-server-cio = { group = "io.ktor", name = "ktor-server-cio", version.ref = "ktor" }
 ktor-server-test-host = { group = "io.ktor", name = "ktor-server-test-host", version.ref = "ktor" }
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-mock = { group = "io.ktor", name = "ktor-client-mock", version.ref = "ktor" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+
+slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+logback-classic = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+
+opentelemetry-api = { group = "io.opentelemetry", name = "opentelemetry-api", version.ref = "opentelemetry" }
+opentelemetry-sdk = { group = "io.opentelemetry", name = "opentelemetry-sdk", version.ref = "opentelemetry" }
+opentelemetry-sdk-testing = { group = "io.opentelemetry", name = "opentelemetry-sdk-testing", version.ref = "opentelemetry" }
 
 ksp-api = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
 
@@ -66,6 +100,7 @@ kotlinx-benchmark-runtime = { group = "org.jetbrains.kotlinx", name = "kotlinx-b
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
+android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
@@ -74,3 +109,6 @@ hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
 allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
 kotlinx-benchmark = { id = "org.jetbrains.kotlinx.benchmark", version.ref = "benchmark" }
 vanniktech-publish = { id = "com.vanniktech.maven.publish", version = "0.37.0" }
+kotlinx-kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+binary-compatibility-validator = { id = "org.jetbrains.kotlinx.binary-compatibility-validator", version.ref = "bcv" }
+dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }

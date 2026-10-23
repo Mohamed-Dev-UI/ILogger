@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.allopen)
     alias(libs.plugins.kotlinx.benchmark)
     application
@@ -14,6 +15,11 @@ dependencies {
     api(project(":ilogger-core"))
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.benchmark.runtime)
+
+    // Benchmarks the real generated-wrapper path, not a hand-written imitation.
+    ksp(project(":ilogger-ksp"))
+
+    testImplementation(libs.junit)
 }
 
 // JMH needs @Benchmark/@State methods/fields non-final: open every annotated class.

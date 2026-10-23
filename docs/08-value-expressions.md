@@ -27,10 +27,22 @@ the real function signature; anything unresolvable fails compilation with
 2. **`result` only exists on SUCCESS** — on START/FAILURE events the
    result-derived values are absent by construction. Choose `before = true`
    and value expressions accordingly.
-3. **Types** — selected values must be *loggable* (String, primitive wrappers,
-   enums-as-name, etc.); arbitrary domain objects are never serialized
-   wholesale. Selection of a specific property ("task.title") keeps payloads
-   small and PII-scoped by design.
+3. **Types** — selected values must be *loggable*. The default model accepts:
+   - scalars: `String`, `Char`, all primitive numbers, unsigned integers
+     (`UInt`/`ULong`/`UShort`/`UByte`), `Boolean`;
+   - enums (rendered as their name);
+   - `java.util.UUID`, `java.time.Instant`, `java.time.Duration` (rendered as
+     their canonical `toString()`), `java.math.BigDecimal`/`BigInteger`;
+   - **value classes** whose underlying type is loggable (rendered via
+     `toString()` unless a [ValueAdapter](10-extractors.md) reshapes them);
+   - one-level containers of the above: `List`/`Set`/`Iterable`, arrays
+     (including primitive arrays like `IntArray`), and `Map` with loggable
+     keys and values;
+   - `Result<T>` where `T` is loggable (unwrapped like nullable returns).
+   Arbitrary domain objects are never serialized wholesale. Selection of a
+   specific property ("task.title") keeps payloads small and PII-scoped by
+   design. Types outside the model need `LogMeta(extractor = ...)` or
+   `LogMeta(adapter = ...)` (see [10-extractors.md](10-extractors.md)).
 4. **Sensitive names** (`password`, `token`, `accessToken`, `cookie`, ...) are
    refused by name — even without annotations — as defense in depth for
    dynamic metadata; explicit `sensitive =` policy unlocks a typed selection

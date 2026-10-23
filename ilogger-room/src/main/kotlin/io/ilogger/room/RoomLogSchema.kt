@@ -19,6 +19,14 @@ import androidx.sqlite.execSQL
  */
 public object RoomLogSchema {
 
+    /**
+     * Version of the `ilogger_events` table contract, not of the application's
+     * Room database. Bump it only when [RoomLogEntity] changes, and pair the
+     * bump with a migration built from [migration] plus the necessary
+     * `ALTER TABLE` statements.
+     */
+    public const val TABLE_VERSION: Int = 1
+
     /** Table name; the entity and DAO refer to this constant. */
     public const val TABLE: String = "ilogger_events"
 

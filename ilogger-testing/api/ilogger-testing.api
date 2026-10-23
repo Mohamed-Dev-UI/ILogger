@@ -1,0 +1,143 @@
+public final class io/ilogger/testing/BlockingLogSink : io/ilogger/core/LogSink {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun awaitFirstWrite (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun awaitFirstWrite$default (Lio/ilogger/testing/BlockingLogSink;JLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public fun close ()V
+	public final fun count ()I
+	public final fun events ()Ljava/util/List;
+	public final fun firstWriteReached ()Z
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getName ()Ljava/lang/String;
+	public final fun release ()V
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/testing/ChaoticLogSink : io/ilogger/core/LogSink {
+	public fun <init> (Lio/ilogger/core/LogSink;JDDJD)V
+	public synthetic fun <init> (Lio/ilogger/core/LogSink;JDDJDILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun attemptedEventCount ()I
+	public final fun callCount ()I
+	public fun close ()V
+	public final fun delayedCallCount ()I
+	public final fun failedCallCount ()I
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getDelegate ()Lio/ilogger/core/LogSink;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/testing/FakeLogSink : io/ilogger/core/DirectLogSink {
+	public fun <init> ()V
+	public fun <init> (Lio/ilogger/core/sink/EventCodec;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/ilogger/core/sink/EventCodec;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun attemptedEventCount ()I
+	public final fun batches ()Ljava/util/List;
+	public fun close ()V
+	public final fun closeCallCount ()I
+	public final fun count ()I
+	public final fun delayWrites (J)Lio/ilogger/testing/FakeLogSink;
+	public final fun events ()Ljava/util/List;
+	public final fun failCloseWith (Ljava/lang/Throwable;)Lio/ilogger/testing/FakeLogSink;
+	public final fun failEveryNthWrite (ILkotlin/jvm/functions/Function1;)Lio/ilogger/testing/FakeLogSink;
+	public static synthetic fun failEveryNthWrite$default (Lio/ilogger/testing/FakeLogSink;ILkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/ilogger/testing/FakeLogSink;
+	public final fun failFlushWith (Ljava/lang/Throwable;)Lio/ilogger/testing/FakeLogSink;
+	public final fun failNextWrites (ILkotlin/jvm/functions/Function1;)Lio/ilogger/testing/FakeLogSink;
+	public static synthetic fun failNextWrites$default (Lio/ilogger/testing/FakeLogSink;ILkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/ilogger/testing/FakeLogSink;
+	public final fun failedWriteCount ()I
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun flushCallCount ()I
+	public final fun getName ()Ljava/lang/String;
+	public final fun last ()Lio/ilogger/core/LogEvent;
+	public final fun payloads ()Ljava/util/List;
+	public final fun reset ()Lio/ilogger/testing/FakeLogSink;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun writeAllCallCount ()I
+	public final fun writeCallCount ()I
+	public fun writeDirect (Lio/ilogger/core/LogEvent;)V
+	public final fun writtenEventCount ()I
+}
+
+public class io/ilogger/testing/InMemoryLogSink : io/ilogger/core/DirectLogSink {
+	public fun <init> ()V
+	public final fun awaitCount (IJLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun awaitCount$default (Lio/ilogger/testing/InMemoryLogSink;IJLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun clear ()V
+	public fun close ()V
+	public final fun count ()I
+	public final fun events ()Ljava/util/List;
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun last ()Lio/ilogger/core/LogEvent;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeDirect (Lio/ilogger/core/LogEvent;)V
+}
+
+public abstract class io/ilogger/testing/LogSinkConformance {
+	public static final field BASE_TIMESTAMP J
+	public fun <init> ()V
+	public final fun closeIsIdempotentAndRetainsFlushedEvents ()V
+	public final fun concurrentWritersLoseAndDuplicateNothing ()V
+	protected abstract fun createSink ()Lio/ilogger/core/LogSink;
+	protected fun deliveredEvents (Lio/ilogger/core/LogSink;)Ljava/util/List;
+	protected abstract fun deliveredIds (Lio/ilogger/core/LogSink;)Ljava/util/List;
+	public final fun directFastPathRecordsTheSameWayAsWrite ()V
+	protected fun dispose (Lio/ilogger/core/LogSink;)V
+	public final fun eventsWithIdenticalTimestampsAreAllDelivered ()V
+	public final fun flushIsIdempotentAndSafeWithoutEvents ()V
+	protected final fun sample (IJ)Lio/ilogger/core/LogEvent;
+	public static synthetic fun sample$default (Lio/ilogger/testing/LogSinkConformance;IJILjava/lang/Object;)Lio/ilogger/core/LogEvent;
+	public final fun writeAllDeliversEveryEventInOrder ()V
+	public final fun writeAllWithEmptyListIsNoOp ()V
+	public final fun writeDeliversOneEventAndPreservesContent ()V
+}
+
+public final class io/ilogger/testing/RecordingDeadLetterSink : io/ilogger/core/DeadLetterSink {
+	public fun <init> ()V
+	public fun close ()V
+	public final fun closeCallCount ()I
+	public final fun count ()I
+	public final fun dropped ()Ljava/util/List;
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun flushCallCount ()I
+	public final fun reasons ()Ljava/util/List;
+	public fun write (Lio/ilogger/core/DroppedEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/testing/SequentialIdGenerator : io/ilogger/core/EventIdGenerator {
+	public fun <init> ()V
+	public fun next ()Ljava/lang/String;
+}
+
+public final class io/ilogger/testing/TestKit {
+	public static final field Companion Lio/ilogger/testing/TestKit$Companion;
+	public fun <init> (Lio/ilogger/core/ILogger;Lio/ilogger/testing/TestLogSink;Lio/ilogger/core/FixedClock;)V
+	public final fun advanceTimeBy (J)V
+	public final fun assertLogged (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/Integer;Lkotlin/jvm/functions/Function1;)Ljava/util/List;
+	public static synthetic fun assertLogged$default (Lio/ilogger/testing/TestKit;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/Integer;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Ljava/util/List;
+	public final fun assertNoSensitive ([Ljava/lang/String;)V
+	public final fun assertNotLogged (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Lkotlin/jvm/functions/Function1;)V
+	public static synthetic fun assertNotLogged$default (Lio/ilogger/testing/TestKit;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)V
+	public final fun awaitEvent (JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun awaitEvent$default (Lio/ilogger/testing/TestKit;JLkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun drain (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun drain$default (Lio/ilogger/testing/TestKit;JLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun eventsFor (Ljava/lang/String;)Ljava/util/List;
+	public final fun getClock ()Lio/ilogger/core/FixedClock;
+	public final fun getLogger ()Lio/ilogger/core/ILogger;
+	public final fun getSink ()Lio/ilogger/testing/TestLogSink;
+	public final fun golden (Lio/ilogger/core/LogEvent;)Ljava/lang/String;
+}
+
+public final class io/ilogger/testing/TestKit$Companion {
+	public final fun create (Lkotlinx/coroutines/CoroutineDispatcher;Lkotlin/jvm/functions/Function1;)Lio/ilogger/testing/TestKit;
+	public static synthetic fun create$default (Lio/ilogger/testing/TestKit$Companion;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lio/ilogger/testing/TestKit;
+}
+
+public final class io/ilogger/testing/TestLogSink : io/ilogger/testing/InMemoryLogSink {
+	public fun <init> ()V
+}
+

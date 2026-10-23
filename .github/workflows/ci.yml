@@ -1,11 +1,23 @@
 # ILogger continuous integration.
 #
-# Two jobs:
-#  - jvm:     every multiplatform-clean library module, the KSP processor
-#             behavior tests, the negative-diagnostics fixtures, all five JVM
-#             examples, the benchmark module, and a publish smoke run.
-#  - android: the Compose demo app (needs the Android SDK; AGP auto-downloads
-#             compileSdk 37 platform/build-tools with accepted licenses).
+# Jobs:
+#  - jvm:         every multiplatform-clean library module, the BOM, the KSP
+#                 processor behavior tests, the negative-diagnostics fixtures,
+#                 all six JVM examples (including the Gradle-plugin consumer),
+#                 the plugin's TestKit fixtures, the benchmark module, the CLI
+#                 (tests, distribution and coverage floor), the public-API dump
+#                 check and the coverage floors, a reproducible archive check,
+#                 and a publish smoke run.
+#  - jvm-platforms: the file-and-module test suite on Windows and macOS. The
+#                 rotation tests in `TextFileSinkTest` are the reason: they
+#                 exercise real filesystem semantics (rename, delete, case
+#                 sensitivity) that differ per OS.
+#  - android:     the Compose demo app (needs the Android SDK; AGP auto-
+#                 downloads compileSdk 37 platform/build-tools with accepted
+#                 licenses), Android unit tests, Dokka docs, and the
+#                 instrumented suite on a real emulator.
+#  - benchmark:   the producer-budget regression gate (median per-event cost of
+#                 disabled logging, async enqueue and buffered audit).
 #
 # :app is intentionally NOT part of the jvm job — no Android SDK there.
 
@@ -15,6 +27,7 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,7 +35,7 @@ concurrency:
 
 jobs:
   jvm:
-    name: JVM — build, test, publish smoke
+    name: JVM — build, gates, publish smoke
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,7 +51,14 @@ jobs:
         with:
           validate-wrappers: true
 
-      - name: Build & test all JVM modules
+      - name: Test Gradle plugin (TestKit fixtures)
+        run: ./gradlew -p ilogger-gradle-plugin test --console=plain
+
+      # `build` runs check, which runs apiCheck (committed API dumps) and
+      # koverVerify (line-coverage floors in the root build script). The two
+      # explicit tasks below make the gates visible in the CI log even when a
+      # module build is up-to-date.
+      - name: Build, test, API compatibility and coverage
         run: >
           ./gradlew
           :ilogger-annotations:build
@@ -48,21 +68,79 @@ jobs:
           :ilogger-room:build
           :ilogger-serialization:build
           :ilogger-ktor:build
+          :ilogger-bom:build
+          :ilogger-cli:build
           :ksp-tests:test
           :ksp-diagnostics:test
           :ksp-diagnostics-di:test
+          :ksp-diagnostics-warnings:test
+          :ksp-diagnostics-options:test
           :examples:basic:build
           :examples:room:build
           :examples:custom-sink:build
           :examples:server:build
           :examples:advanced-audit:build
+          :examples:gradle-plugin:build
           :benchmark:build
+          apiCheck
+          koverVerify
+          --console=plain
+
+      # Timestamps are stripped and entry order is fixed in the root build.
+      # Rebuilding the same jars must produce identical bytes.
+      - name: Verify reproducible archives
+        run: |
+          ./gradlew :ilogger-core:jar :ilogger-serialization:jar --console=plain -q
+          sha256sum ilogger-core/build/libs/ilogger-core-*.jar \
+                    ilogger-serialization/build/libs/ilogger-serialization-*.jar > /tmp/first.sha
+          ./gradlew :ilogger-core:jar :ilogger-serialization:jar --rerun-tasks --console=plain -q
+          sha256sum ilogger-core/build/libs/ilogger-core-*.jar \
+                    ilogger-serialization/build/libs/ilogger-serialization-*.jar > /tmp/second.sha
+          diff /tmp/first.sha /tmp/second.sha
 
       - name: Publish smoke (all artifacts to Maven Local)
-        run: ./gradlew publishToMavenLocal
+        run: |
+          ./gradlew publishToMavenLocal
+          ./gradlew -p ilogger-gradle-plugin publishToMavenLocal
+
+  jvm-platforms:
+    name: JVM — ${{ matrix.os }} module & rotation tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest ]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      # Bash is explicit so Windows uses the checked-in wrapper script; the
+      # same command then runs unchanged on both runners.
+      - name: Test rotation-sensitive and framework modules
+        shell: bash
+        run: >
+          ./gradlew
+          :ilogger-annotations:test
+          :ilogger-core:test
+          :ilogger-testing:test
+          :ilogger-serialization:test
+          :ilogger-room:test
+          :ilogger-ktor:test
+          :ilogger-cli:test
+          --console=plain
 
   android:
-    name: Android — assembleDebug
+    name: Android — assemble, unit tests, docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -82,3 +160,84 @@ jobs:
 
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug
+
+      - name: Test Android library on the JVM
+        run: ./gradlew :ilogger-android:testDebugUnitTest
+
+      - name: Compile instrumented tests
+        run: |
+          ./gradlew :ilogger-android:assembleDebugAndroidTest
+          ./gradlew :app:assembleDebugAndroidTest
+
+      # Dokka covers every published artifact, including ilogger-android, so
+      # this job owns the docs build (it has the Android SDK).
+      - name: Build API docs (Dokka)
+        run: ./gradlew dokkaGenerate --console=plain
+
+  android-instrumented:
+    name: Android — instrumented tests (API 34 emulator)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      # The emulator needs hardware acceleration; expose /dev/kvm to the runner
+      # user (standard recipe from the emulator-runner action).
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: >-
+            -no-snapshot-save -no-window -gpu swiftshader_indirect
+            -noaudio -no-boot-anim -camera-back none
+          script: >
+            ./gradlew
+            :ilogger-android:connectedDebugAndroidTest
+            :app:connectedDebugAndroidTest
+            --console=plain
+
+  benchmark:
+    name: Benchmark — producer budgets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle (caching + wrapper validation)
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          validate-wrappers: true
+
+      # The gate is opt-in (an assume-skip elsewhere) so ordinary `:benchmark`
+      # builds never fail on noisy developer machines. This job is the
+      # enforcement point; `Budgets` allows 15% overshoot for runner noise.
+      - name: Enforce per-event budgets
+        env:
+          ILOGGER_BENCH_GATE: 'true'
+        run: ./gradlew :benchmark:test --tests benchmark.BudgetGateTest --console=plain

@@ -1,0 +1,408 @@
+public final class io/ilogger/room/AesGcmRoomPayloadCipher : io/ilogger/room/RoomLogPayloadCipher {
+	public fun <init> (Lio/ilogger/core/crypto/AesGcmCipher;)V
+	public fun decrypt (Ljava/lang/String;)Ljava/lang/String;
+	public fun encrypt (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomIntegrationKt {
+	public static final fun withAuditCallback (Landroidx/room/RoomDatabase$Builder;Lio/ilogger/core/ILogger;Ljava/lang/String;)Landroidx/room/RoomDatabase$Builder;
+	public static synthetic fun withAuditCallback$default (Landroidx/room/RoomDatabase$Builder;Lio/ilogger/core/ILogger;Ljava/lang/String;ILjava/lang/Object;)Landroidx/room/RoomDatabase$Builder;
+}
+
+public final class io/ilogger/room/RoomLogCount {
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lio/ilogger/room/RoomLogCount;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogCount;JILjava/lang/Object;)Lio/ilogger/room/RoomLogCount;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/room/RoomLogDao {
+	public abstract fun countRaw (Landroidx/room/RoomRawQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun deleteByIds (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun distinctRaw (Landroidx/room/RoomRawQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun expiredPage (JJLjava/lang/String;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun insertAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun observeCountRaw (Landroidx/room/RoomRawQuery;)Lkotlinx/coroutines/flow/Flow;
+	public abstract fun observeRaw (Landroidx/room/RoomRawQuery;)Lkotlinx/coroutines/flow/Flow;
+	public abstract fun purgeBefore (JLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun queryRaw (Landroidx/room/RoomRawQuery;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun recent (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogEntity {
+	public fun <init> (Ljava/lang/String;JLjava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ljava/lang/String;
+	public final fun component12 ()Ljava/lang/String;
+	public final fun component13 ()Ljava/lang/String;
+	public final fun component14 ()Ljava/lang/String;
+	public final fun component2 ()J
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun component9 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;JLjava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lio/ilogger/room/RoomLogEntity;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogEntity;Ljava/lang/String;JLjava/lang/String;Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogEntity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAction ()Ljava/lang/String;
+	public final fun getActionVersion ()I
+	public final fun getActorId ()Ljava/lang/String;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getCausationId ()Ljava/lang/String;
+	public final fun getCorrelationId ()Ljava/lang/String;
+	public final fun getEntity ()Ljava/lang/String;
+	public final fun getEntityId ()Ljava/lang/String;
+	public final fun getEventId ()Ljava/lang/String;
+	public final fun getLevel ()Ljava/lang/String;
+	public final fun getOutcome ()Ljava/lang/String;
+	public final fun getPayload ()Ljava/lang/String;
+	public final fun getSource ()Ljava/lang/String;
+	public final fun getTs ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogErasure {
+	public static final field DELETE_CHUNK_SIZE I
+	public static final field HASH_PREFIX_LENGTH I
+	public static final field QUERY_PAGE_SIZE I
+	public fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogLegalHoldRegistry;Lio/ilogger/core/LogClock;Lio/ilogger/room/RoomLogPayloadCipher;)V
+	public synthetic fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogLegalHoldRegistry;Lio/ilogger/core/LogClock;Lio/ilogger/room/RoomLogPayloadCipher;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun eraseActor (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun eraseActor$default (Lio/ilogger/room/RoomLogErasure;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public final fun eraseEntity (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun eraseEntity$default (Lio/ilogger/room/RoomLogErasure;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogErasureKt {
+	public static final field ROOM_LOG_ERASURE_ACTION Ljava/lang/String;
+	public static final field ROOM_LOG_ERASURE_CATEGORY Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogErasureReport {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;)Lio/ilogger/room/RoomLogErasureReport;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogErasureReport;Ljava/lang/String;Ljava/lang/String;IILjava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogErasureReport;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAuditEventId ()Ljava/lang/String;
+	public final fun getRemoved ()I
+	public final fun getTargetHash ()Ljava/lang/String;
+	public final fun getTargetKind ()Ljava/lang/String;
+	public final fun getWithheld ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogExportKt {
+	public static final fun exportJsonLines (Lio/ilogger/room/RoomLogDao;Ljava/lang/Appendable;Lio/ilogger/room/RoomLogFilter;ILio/ilogger/room/RoomLogPayloadCipher;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun exportJsonLines$default (Lio/ilogger/room/RoomLogDao;Ljava/lang/Appendable;Lio/ilogger/room/RoomLogFilter;ILio/ilogger/room/RoomLogPayloadCipher;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun importJsonLines (Lio/ilogger/room/RoomLogDao;Ljava/io/BufferedReader;Lio/ilogger/room/RoomLogPayloadCipher;ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun importJsonLines$default (Lio/ilogger/room/RoomLogDao;Ljava/io/BufferedReader;Lio/ilogger/room/RoomLogPayloadCipher;ILkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogFacet : java/lang/Enum {
+	public static final field ACTION Lio/ilogger/room/RoomLogFacet;
+	public static final field ACTOR Lio/ilogger/room/RoomLogFacet;
+	public static final field CATEGORY Lio/ilogger/room/RoomLogFacet;
+	public static final field CORRELATION_ID Lio/ilogger/room/RoomLogFacet;
+	public static final field ENTITY Lio/ilogger/room/RoomLogFacet;
+	public static final field ENTITY_ID Lio/ilogger/room/RoomLogFacet;
+	public static final field LEVEL Lio/ilogger/room/RoomLogFacet;
+	public static final field OUTCOME Lio/ilogger/room/RoomLogFacet;
+	public static final field SOURCE Lio/ilogger/room/RoomLogFacet;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/room/RoomLogFacet;
+	public static fun values ()[Lio/ilogger/room/RoomLogFacet;
+}
+
+public final class io/ilogger/room/RoomLogFilter {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/lang/Long;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/Long;
+	public final fun component2 ()Ljava/lang/Long;
+	public final fun component3 ()Ljava/util/Set;
+	public final fun component4 ()Ljava/util/Set;
+	public final fun component5 ()Ljava/util/Set;
+	public final fun component6 ()Ljava/util/Set;
+	public final fun component7 ()Ljava/util/Set;
+	public final fun component8 ()Ljava/util/Set;
+	public final fun component9 ()Ljava/util/Set;
+	public final fun copy (Ljava/lang/Long;Ljava/lang/Long;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;)Lio/ilogger/room/RoomLogFilter;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogFilter;Ljava/lang/Long;Ljava/lang/Long;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;Ljava/util/Set;ILjava/lang/Object;)Lio/ilogger/room/RoomLogFilter;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActions ()Ljava/util/Set;
+	public final fun getActorIds ()Ljava/util/Set;
+	public final fun getCorrelationIds ()Ljava/util/Set;
+	public final fun getEntities ()Ljava/util/Set;
+	public final fun getEntityIds ()Ljava/util/Set;
+	public final fun getFromMillis ()Ljava/lang/Long;
+	public final fun getLevels ()Ljava/util/Set;
+	public final fun getOutcomes ()Ljava/util/Set;
+	public final fun getToMillis ()Ljava/lang/Long;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/room/RoomLogLegalHold {
+	public abstract fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+}
+
+public final class io/ilogger/room/RoomLogLegalHold$Action : io/ilogger/room/RoomLogLegalHold {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/ilogger/room/RoomLogLegalHold$Action;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogLegalHold$Action;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogLegalHold$Action;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAction ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogLegalHold$Actor : io/ilogger/room/RoomLogLegalHold {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/ilogger/room/RoomLogLegalHold$Actor;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogLegalHold$Actor;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogLegalHold$Actor;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActorId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogLegalHold$Category : io/ilogger/room/RoomLogLegalHold {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/ilogger/room/RoomLogLegalHold$Category;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogLegalHold$Category;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogLegalHold$Category;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCategory ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogLegalHold$Entity : io/ilogger/room/RoomLogLegalHold {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lio/ilogger/room/RoomLogLegalHold$Entity;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogLegalHold$Entity;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogLegalHold$Entity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEntity ()Ljava/lang/String;
+	public final fun getEntityId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogLegalHold$Event : io/ilogger/room/RoomLogLegalHold {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/ilogger/room/RoomLogLegalHold$Event;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogLegalHold$Event;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogLegalHold$Event;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEventId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogLegalHoldRegistry {
+	public fun <init> ()V
+	public final fun clear ()V
+	public final fun getSize ()I
+	public final fun hold (Lio/ilogger/room/RoomLogLegalHold;)V
+	public final fun hold ([Lio/ilogger/room/RoomLogLegalHold;)V
+	public final fun isHeld (Lio/ilogger/room/RoomLogEntity;)Z
+	public final fun release (Lio/ilogger/room/RoomLogLegalHold;)Z
+	public final fun snapshot ()Ljava/util/Set;
+}
+
+public final class io/ilogger/room/RoomLogMappingKt {
+	public static final fun toRoomLogEntity (Lio/ilogger/core/LogEvent;Lio/ilogger/core/sink/EventCodec;)Lio/ilogger/room/RoomLogEntity;
+	public static final fun toRoomLogEntity (Lio/ilogger/core/LogEvent;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogPayloadCipher;)Lio/ilogger/room/RoomLogEntity;
+	public static synthetic fun toRoomLogEntity$default (Lio/ilogger/core/LogEvent;Lio/ilogger/core/sink/EventCodec;ILjava/lang/Object;)Lio/ilogger/room/RoomLogEntity;
+	public static synthetic fun toRoomLogEntity$default (Lio/ilogger/core/LogEvent;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogPayloadCipher;ILjava/lang/Object;)Lio/ilogger/room/RoomLogEntity;
+}
+
+public final class io/ilogger/room/RoomLogOrder : java/lang/Enum {
+	public static final field NEWEST_FIRST Lio/ilogger/room/RoomLogOrder;
+	public static final field OLDEST_FIRST Lio/ilogger/room/RoomLogOrder;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/room/RoomLogOrder;
+	public static fun values ()[Lio/ilogger/room/RoomLogOrder;
+}
+
+public final class io/ilogger/room/RoomLogPage {
+	public fun <init> ()V
+	public fun <init> (IILio/ilogger/room/RoomLogOrder;)V
+	public synthetic fun <init> (IILio/ilogger/room/RoomLogOrder;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun component3 ()Lio/ilogger/room/RoomLogOrder;
+	public final fun copy (IILio/ilogger/room/RoomLogOrder;)Lio/ilogger/room/RoomLogPage;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogPage;IILio/ilogger/room/RoomLogOrder;ILjava/lang/Object;)Lio/ilogger/room/RoomLogPage;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getLimit ()I
+	public final fun getOffset ()I
+	public final fun getOrder ()Lio/ilogger/room/RoomLogOrder;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/room/RoomLogPayloadCipher {
+	public abstract fun decrypt (Ljava/lang/String;)Ljava/lang/String;
+	public abstract fun encrypt (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogQueriesKt {
+	public static final fun count (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun count$default (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun distinctValues (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFacet;Lio/ilogger/room/RoomLogFilter;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun distinctValues$default (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFacet;Lio/ilogger/room/RoomLogFilter;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static final fun observe (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lio/ilogger/room/RoomLogPage;)Lkotlinx/coroutines/flow/Flow;
+	public static synthetic fun observe$default (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lio/ilogger/room/RoomLogPage;ILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public static final fun observeCount (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;)Lkotlinx/coroutines/flow/Flow;
+	public static synthetic fun observeCount$default (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;ILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public static final fun query (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lio/ilogger/room/RoomLogPage;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun query$default (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogFilter;Lio/ilogger/room/RoomLogPage;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogRetention {
+	public static final field Companion Lio/ilogger/room/RoomLogRetention$Companion;
+	public fun <init> (JJ)V
+	public final fun getKeepMillis ()J
+	public final fun getSweepEveryMillis ()J
+}
+
+public final class io/ilogger/room/RoomLogRetention$Companion {
+	public final fun keepDays (II)Lio/ilogger/room/RoomLogRetention;
+	public static synthetic fun keepDays$default (Lio/ilogger/room/RoomLogRetention$Companion;IIILjava/lang/Object;)Lio/ilogger/room/RoomLogRetention;
+}
+
+public final class io/ilogger/room/RoomLogRetentionEnforcer {
+	public static final field SWEEP_PAGE_SIZE I
+	public fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogRetentionPolicy;Lio/ilogger/room/RoomLogLegalHoldRegistry;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function2;)V
+	public synthetic fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogRetentionPolicy;Lio/ilogger/room/RoomLogLegalHoldRegistry;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun sweep (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogRetentionPolicy {
+	public fun <init> (Ljava/lang/Long;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/lang/Long;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getDefaultKeepMillis ()Ljava/lang/Long;
+	public final fun getRules ()Ljava/util/List;
+	public final fun keepMillisFor (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/Long;
+	public final fun minimumKeepMillis ()J
+}
+
+public final class io/ilogger/room/RoomLogRetentionRule {
+	public static final field Companion Lio/ilogger/room/RoomLogRetentionRule$Companion;
+	public fun <init> (JLjava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (JLjava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun copy (JLjava/lang/String;Ljava/lang/String;)Lio/ilogger/room/RoomLogRetentionRule;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogRetentionRule;JLjava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogRetentionRule;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getEntity ()Ljava/lang/String;
+	public final fun getKeepMillis ()J
+	public fun hashCode ()I
+	public final fun matches (Lio/ilogger/room/RoomLogEntity;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogRetentionRule$Companion {
+	public final fun days (ILjava/lang/String;Ljava/lang/String;)Lio/ilogger/room/RoomLogRetentionRule;
+	public static synthetic fun days$default (Lio/ilogger/room/RoomLogRetentionRule$Companion;ILjava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogRetentionRule;
+}
+
+public final class io/ilogger/room/RoomLogRetentionScheduler {
+	public fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lio/ilogger/room/RoomLogDao;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lio/ilogger/room/RoomLogRetentionEnforcer;JLkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lio/ilogger/room/RoomLogRetentionEnforcer;JLkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun start (Lkotlinx/coroutines/CoroutineScope;)Lkotlinx/coroutines/Job;
+	public final fun sweep (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogRetentionSweep {
+	public fun <init> (II)V
+	public final fun component1 ()I
+	public final fun component2 ()I
+	public final fun copy (II)Lio/ilogger/room/RoomLogRetentionSweep;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogRetentionSweep;IIILjava/lang/Object;)Lio/ilogger/room/RoomLogRetentionSweep;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHeld ()I
+	public final fun getRemoved ()I
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogSchema {
+	public static final field INSTANCE Lio/ilogger/room/RoomLogSchema;
+	public static final field TABLE Ljava/lang/String;
+	public static final field TABLE_VERSION I
+	public final fun getCREATE_TABLE_SQL ()Ljava/lang/String;
+	public final fun getINDEX_SQL ()Ljava/util/List;
+	public final fun migration (II)Landroidx/room/migration/Migration;
+}
+
+public final class io/ilogger/room/RoomLogSink : io/ilogger/core/LogSink {
+	public fun <init> (Lkotlin/jvm/functions/Function2;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogTarget : io/ilogger/core/LogSink {
+	public fun <init> ()V
+	public fun <init> (Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;JLio/ilogger/room/RoomLogPayloadCipher;Lio/ilogger/room/RoomLogLegalHoldRegistry;)V
+	public synthetic fun <init> (Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;JLio/ilogger/room/RoomLogPayloadCipher;Lio/ilogger/room/RoomLogLegalHoldRegistry;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun bind (Lio/ilogger/room/RoomLogDao;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/room/RoomLogTargetUnboundException : java/lang/IllegalStateException {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class io/ilogger/room/RoomLogValue {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;)Lio/ilogger/room/RoomLogValue;
+	public static synthetic fun copy$default (Lio/ilogger/room/RoomLogValue;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/room/RoomLogValue;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/room/RoomLogsKt {
+	public static final fun roomLogs (Lio/ilogger/core/ILoggerBuilder;Lio/ilogger/room/RoomLogDao;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/room/RoomLogPayloadCipher;Lio/ilogger/room/RoomLogLegalHoldRegistry;)V
+	public static synthetic fun roomLogs$default (Lio/ilogger/core/ILoggerBuilder;Lio/ilogger/room/RoomLogDao;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/room/RoomLogRetention;Lio/ilogger/room/RoomLogPayloadCipher;Lio/ilogger/room/RoomLogLegalHoldRegistry;ILjava/lang/Object;)V
+}
+

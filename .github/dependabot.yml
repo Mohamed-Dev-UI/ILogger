@@ -1,0 +1,40 @@
+# Dependency and security updates (G-42). Weekly PRs keep the pinned
+# toolchain, runtime libraries, AndroidX/Compose artifacts and Actions current.
+# KSP, Kotlin and Compose compiler versions must move together, so they are
+# grouped; CI still has to pass before any of these merge.
+version: 2
+
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      kotlin-and-ksp:
+        patterns:
+          - org.jetbrains.kotlin*
+          - com.google.devtools.ksp*
+      androidx:
+        patterns:
+          - androidx.*
+      kotlinx:
+        patterns:
+          - org.jetbrains.kotlinx*
+    ignore:
+      # KotlinPoet above 2.2.x ships Kotlin 2.4 metadata, unreadable by the
+      # pinned Kotlin 2.2 compiler (see libs.versions.toml).
+      - dependency-name: com.squareup:kotlinpoet*
+        versions: [ ">2.2.x" ]
+
+  - package-ecosystem: gradle
+    directory: /ilogger-gradle-plugin
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

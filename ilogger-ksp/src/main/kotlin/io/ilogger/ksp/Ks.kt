@@ -6,6 +6,7 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.Modifier
 
 /**
  * Symbol-lookup helpers shared by the processor. Plain functions; no layered
@@ -21,6 +22,12 @@ internal object Ks {
     const val LOG_EXCLUDE_FQN = "io.ilogger.annotations.LogExclude"
     const val LOG_ENTITY_ID_FQN = "io.ilogger.annotations.LogEntityId"
     const val LOG_DAO_FQN = "io.ilogger.annotations.LogDao"
+    const val LOG_CONFIG_FQN = "io.ilogger.annotations.LogConfig"
+    const val NO_LOG_FQN = "io.ilogger.annotations.NoLog"
+    const val LOG_ACTIONS_FQN = "io.ilogger.annotations.LogActions"
+
+    /** Canonical action format: `<domain>.<event>[.<variant>]`. */
+    val ACTION_REGEX = Regex("^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$")
 
     const val NOTHING_FQN = "kotlin.Nothing"
 
@@ -92,14 +99,20 @@ internal object Ks {
      * plausible application entity class. Returns null for framework, stdlib,
      * primitive and logger-internal types.
      */
-    fun domainCandidate(type: KSType): KSType? {
+    fun domainCandidate(type: KSType, domainPackages: Set<String> = emptySet()): KSType? {
         if (type.isError) return null
         val (unwrapped, _) = unwrapCollection(type)
         if (unwrapped.isError) return null
-        val fqn = unwrapped.declaration.qualifiedName?.asString() ?: return null
+        val declaration = unwrapped.declaration
+        // Entities are concrete classes: type parameters (T, R) carry a
+        // qualified name like `pkg.Owner.T` but name no loggable entity, and
+        // value classes are values, not entities.
+        if (declaration !is KSClassDeclaration) return null
+        if (Modifier.VALUE in declaration.modifiers) return null
+        val fqn = declaration.qualifiedName?.asString() ?: return null
         if (fqn.isBlank()) return null
         if (nonDomainPrefixes.any { fqn.startsWith(it) }) return null
-        if (unwrapped.declaration != null && unwrapped.declaration.qualifiedName == null) return null
+        if (domainPackages.isNotEmpty() && domainPackages.none { fqn.startsWith(it) }) return null
         return unwrapped
     }
 
@@ -110,20 +123,67 @@ internal object Ks {
         return fqn in setOf("kotlin.Long", "kotlin.Int", "kotlin.Short", "kotlin.String")
     }
 
-    /** Loggable metadata value types (primitives, strings, enums, one-level lists of those). */
+    /** Scalar value types render deterministically without a converter. */
+    private val scalarValueTypes = setOf(
+        "kotlin.Byte", "kotlin.Short", "kotlin.Int", "kotlin.Long",
+        "kotlin.Float", "kotlin.Double", "kotlin.Boolean", "kotlin.String",
+        "kotlin.Char",
+        "kotlin.UByte", "kotlin.UShort", "kotlin.UInt", "kotlin.ULong",
+        "java.util.UUID", "java.time.Instant", "java.time.Duration",
+        "java.math.BigDecimal", "java.math.BigInteger",
+    )
+
+    private val primitiveArrayTypes = setOf(
+        "kotlin.IntArray", "kotlin.LongArray", "kotlin.ShortArray", "kotlin.ByteArray",
+        "kotlin.DoubleArray", "kotlin.FloatArray", "kotlin.BooleanArray", "kotlin.CharArray",
+        "kotlin.UIntArray", "kotlin.ULongArray", "kotlin.UShortArray", "kotlin.UByteArray",
+    )
+
+    /** Loggable metadata value types: scalars, enums, one-level lists/arrays/maps of those, value classes and Result. */
     fun isLoggableValueType(type: KSType): Boolean {
         if (type.isError) return false
-        // One unwrap: List<Task> checks Task. Nested lists reach a non-primitive
-        // element type and are rejected (explicit extractors can handle them).
-        val element = unwrapCollection(type).first
-        if (element.isError) return false
-        val fqn = element.declaration.qualifiedName?.asString() ?: return false
-        if (fqn in setOf(
-                "kotlin.Byte", "kotlin.Short", "kotlin.Int", "kotlin.Long",
-                "kotlin.Float", "kotlin.Double", "kotlin.Boolean", "kotlin.String",
-            )
-        ) return true
-        val declaration = element.declaration
+        val declaration = type.declaration
+        if (declaration is KSClassDeclaration && Modifier.VALUE in declaration.modifiers) {
+            return isScalarValueType(type)
+        }
+        val fqn = declaration?.qualifiedName?.asString() ?: return false
+        if (fqn in scalarValueTypes) return true
+        // One unwrap for containers: List<Task> checks Task. Nested containers
+        // reach a rejected element type (extractors/adapters can handle them).
+        if (fqn == "kotlin.Result") {
+            val element = type.arguments.firstOrNull()?.type?.resolve() ?: return false
+            return !element.isError && isScalarValueType(element)
+        }
+        if (fqn.startsWith("kotlin.Array")) {
+            val element = type.arguments.firstOrNull()?.type?.resolve() ?: return false
+            return !element.isError && isScalarValueType(element)
+        }
+        if (fqn in primitiveArrayTypes) return true
+        val isMap = fqn.startsWith("kotlin.collections.Map") || fqn.startsWith("kotlin.collections.MutableMap")
+        if (isMap) {
+            val key = type.arguments.getOrNull(0)?.type?.resolve() ?: return false
+            val value = type.arguments.getOrNull(1)?.type?.resolve() ?: return false
+            return !key.isError && !value.isError && isScalarValueType(key) && isScalarValueType(value)
+        }
+        val (element, wasCollection) = unwrapCollection(type)
+        if (wasCollection) return !element.isError && isScalarValueType(element)
+        return type.declaration is KSClassDeclaration &&
+            (type.declaration as KSClassDeclaration).classKind == ClassKind.ENUM_CLASS
+    }
+
+    /** Non-container loggable values: scalars, enums, value classes over scalars. */
+    private fun isScalarValueType(type: KSType): Boolean {
+        if (type.isError) return false
+        val declaration = type.declaration
+        // A value class is loggable when its underlying type is: the wrapper
+        // degrades to `toString()` at render time unless a ValueAdapter applies.
+        if (declaration is KSClassDeclaration && Modifier.VALUE in declaration.modifiers) {
+            val underlying = declaration.primaryConstructor?.parameters?.firstOrNull()?.type?.resolve()
+                ?: return false
+            return isScalarValueType(underlying)
+        }
+        val fqn = declaration?.qualifiedName?.asString() ?: return false
+        if (fqn in scalarValueTypes) return true
         return declaration is KSClassDeclaration && declaration.classKind == ClassKind.ENUM_CLASS
     }
 
@@ -132,6 +192,26 @@ internal object Ks {
 
     fun isFlow(type: KSType): Boolean =
         type.declaration.qualifiedName?.asString()?.startsWith("kotlinx.coroutines.flow.Flow") == true
+
+    /** Unwraps `Result<T>` → T. Returns (type, false) for everything else. */
+    fun unwrapResult(type: KSType): Pair<KSType, Boolean> {
+        val fqn = type.declaration.qualifiedName?.asString() ?: return type to false
+        if (fqn != "kotlin.Result") return type to false
+        val element = type.arguments.firstOrNull()?.type?.resolve() ?: return type to false
+        return if (!element.isError) element to true else type to false
+    }
+
+    /** Unwraps `Flow<T>` → T. Returns (type, false) for everything else. */
+    fun unwrapFlow(type: KSType): Pair<KSType, Boolean> {
+        val fqn = type.declaration.qualifiedName?.asString() ?: return type to false
+        if (!isFlow(type)) return type to false
+        val element = type.arguments.firstOrNull()?.type?.resolve() ?: return type to false
+        return if (!element.isError) element to true else type to false
+    }
+
+    /** Peels `Result<T>` and `Flow<T>` wrappers for entity inference (collections unwrap in [domainCandidate]). */
+    fun unwrapStreamWrappers(type: KSType): KSType =
+        unwrapFlow(unwrapResult(type).first).first
 
     /**
      * Suspected-sensitive property names, by name alone — produces warnings
@@ -176,5 +256,24 @@ internal object Ks {
         val owner = property.parentDeclaration as? KSClassDeclaration
         if (owner != null && annotation(owner, LOG_SENSITIVE_FQN) != null) return true
         return false
+    }
+
+    /**
+     * True when a value of [type] is sensitive as a whole: a type-use
+     * annotation (`token: @LogSensitive String`) or a sensitive class.
+     */
+    fun isSensitiveType(type: KSType): Boolean {
+        if (type.isError) return false
+        if (type.annotations.any { fqnOf(it) == LOG_SENSITIVE_FQN }) return true
+        val declaration = type.declaration
+        return declaration is KSClassDeclaration && annotation(declaration, LOG_SENSITIVE_FQN) != null
+    }
+
+    /** True when a value of [type] is excluded as a whole (type-use or class). */
+    fun isExcludedType(type: KSType): Boolean {
+        if (type.isError) return false
+        if (type.annotations.any { fqnOf(it) == LOG_EXCLUDE_FQN }) return true
+        val declaration = type.declaration
+        return declaration is KSClassDeclaration && annotation(declaration, LOG_EXCLUDE_FQN) != null
     }
 }

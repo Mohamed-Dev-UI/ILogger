@@ -1,0 +1,67 @@
+public final class io/ilogger/ktor/HttpAuditClientConfig {
+	public fun <init> ()V
+	public final fun getActor ()Lio/ilogger/core/Actor;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getClock ()Lio/ilogger/core/LogClock;
+	public final fun getCorrelationHeader ()Ljava/lang/String;
+	public final fun getFailureLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getGenerateTraceparent ()Z
+	public final fun getLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getLogger ()Lio/ilogger/core/ILogger;
+	public final fun getRequestFilter ()Lkotlin/jvm/functions/Function1;
+	public final fun getSampling ()D
+	public final fun getTraceparentHeader ()Ljava/lang/String;
+	public final fun setActor (Lio/ilogger/core/Actor;)V
+	public final fun setCategory (Ljava/lang/String;)V
+	public final fun setClock (Lio/ilogger/core/LogClock;)V
+	public final fun setCorrelationHeader (Ljava/lang/String;)V
+	public final fun setFailureLevel (Lio/ilogger/annotations/LogLevel;)V
+	public final fun setGenerateTraceparent (Z)V
+	public final fun setLevel (Lio/ilogger/annotations/LogLevel;)V
+	public final fun setLogger (Lio/ilogger/core/ILogger;)V
+	public final fun setRequestFilter (Lkotlin/jvm/functions/Function1;)V
+	public final fun setSampling (D)V
+	public final fun setTraceparentHeader (Ljava/lang/String;)V
+}
+
+public final class io/ilogger/ktor/HttpAuditClientKt {
+	public static final fun getHttpAuditClient ()Lio/ktor/client/plugins/api/ClientPlugin;
+}
+
+public final class io/ilogger/ktor/HttpAuditKt {
+	public static final fun getCorrelationKey ()Lio/ktor/util/AttributeKey;
+	public static final fun getHttpAudit ()Lio/ktor/server/application/ApplicationPlugin;
+	public static final fun withAuditContext (Lio/ktor/server/application/ApplicationCall;Lio/ilogger/core/Actor;[Lkotlin/Pair;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun withAuditContext$default (Lio/ktor/server/application/ApplicationCall;Lio/ilogger/core/Actor;[Lkotlin/Pair;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/ktor/HttpFailureEvents : java/lang/Enum {
+	public static final field BOTH Lio/ilogger/ktor/HttpFailureEvents;
+	public static final field SINGLE Lio/ilogger/ktor/HttpFailureEvents;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/ktor/HttpFailureEvents;
+	public static fun values ()[Lio/ilogger/ktor/HttpFailureEvents;
+}
+
+public final class io/ilogger/ktor/HttpLogConfig {
+	public fun <init> ()V
+	public final fun getActorExtractor ()Lkotlin/jvm/functions/Function1;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getClock ()Lio/ilogger/core/LogClock;
+	public final fun getCorrelationHeader ()Ljava/lang/String;
+	public final fun getExcludePaths ()Ljava/util/Set;
+	public final fun getFailureEvents ()Lio/ilogger/ktor/HttpFailureEvents;
+	public final fun getLogger ()Lio/ilogger/core/ILogger;
+	public final fun getRequestFilter ()Lkotlin/jvm/functions/Function1;
+	public final fun getSampling ()D
+	public final fun setActorExtractor (Lkotlin/jvm/functions/Function1;)V
+	public final fun setCategory (Ljava/lang/String;)V
+	public final fun setClock (Lio/ilogger/core/LogClock;)V
+	public final fun setCorrelationHeader (Ljava/lang/String;)V
+	public final fun setExcludePaths (Ljava/util/Set;)V
+	public final fun setFailureEvents (Lio/ilogger/ktor/HttpFailureEvents;)V
+	public final fun setLogger (Lio/ilogger/core/ILogger;)V
+	public final fun setRequestFilter (Lkotlin/jvm/functions/Function1;)V
+	public final fun setSampling (D)V
+}
+

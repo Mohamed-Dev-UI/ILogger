@@ -84,7 +84,7 @@ fun AuditTrailScreen(controller: AuditTrailController) {
         item {
             SectionCard(
                 title = "Query & retention",
-                subtitle = "refresh() flushes the buffered pipeline first, so the read sees everything logged so far.",
+                subtitle = "Rows stream from RoomLogDao.observe(...); refresh() flushes the buffered pipeline and re-measures the file.",
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(

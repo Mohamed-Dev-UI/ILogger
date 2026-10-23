@@ -15,8 +15,8 @@ android {
         applicationId = "com.mohamed.dev.ui.ilogger"
         minSdk = 28
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "2.0.0"
 
         // Boots HiltTestApplication; production modules still form the graph.
         testInstrumentationRunner = "com.mohamed.dev.ui.ilogger.logging.ILoggerTestRunner"
@@ -36,12 +36,16 @@ android {
     }
     buildFeatures {
         compose = true
+        // AGP 9 disables BuildConfig by default; the demo uses DEBUG to pick
+        // strict-mode validation.
+        buildConfig = true
     }
 }
 
 dependencies {
     implementation(project(":ilogger-annotations"))
     implementation(project(":ilogger-core"))
+    implementation(project(":ilogger-android"))
     implementation(project(":ilogger-room"))
     implementation(project(":ilogger-serialization"))
     // The in-app TestKit screen runs the same deterministic kit consumers use.

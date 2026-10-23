@@ -88,8 +88,10 @@ cannot reach.**
 
 ## Reading order
 
-Quickstart (02) → annotation reference (04) → value grammar (08) →
-sinks/routing (13, 14) → configuration (26) → integrations (16, 19, 20).
-Testing (18) early; the diagnostics catalog (23) when the compiler talks
-back; manual instrumentation alternatives (27) before bypassing the
-processor.
+Cheatsheet (40) → quickstart (02) → annotation reference (04) → value
+grammar (08) → sinks/routing (13, 14) → configuration (26) → integrations
+(16, 19, 20). Testing (18) early; the diagnostics catalog (23) when the
+compiler talks back; manual instrumentation alternatives (27) before
+bypassing the processor. Moving an existing codebase: migration (39).
+Choosing versions or targets: compatibility (38) and KMP (37). Operations:
+integrity (30), encryption (31), CLI (36).

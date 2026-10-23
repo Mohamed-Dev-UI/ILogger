@@ -30,9 +30,22 @@ public fun interface EventIdGenerator {
     public fun next(): String
 }
 
-/** Default id generator: random UUIDs (RFC 4122 version 4). */
+/**
+ * Default id generator: random UUIDs (RFC 4122 version 4).
+ *
+ * Uses [java.util.concurrent.ThreadLocalRandom] instead of
+ * [java.util.UUID.randomUUID], whose shared [java.security.SecureRandom] costs
+ * over a microsecond per event on some hosts. Event ids are identifiers, not
+ * secrets; applications that need unpredictability can inject a
+ * `SecureRandom`-backed [EventIdGenerator].
+ */
 public object UuidEventIdGenerator : EventIdGenerator {
-    override fun next(): String = java.util.UUID.randomUUID().toString()
+    override fun next(): String {
+        val random = java.util.concurrent.ThreadLocalRandom.current()
+        val most = (random.nextLong() and -0xf001L) or 0x4000L
+        val least = (random.nextLong() and 0x3fff_ffff_ffff_ffffL) or Long.MIN_VALUE
+        return java.util.UUID(most, least).toString()
+    }
 }
 
 /**
@@ -77,7 +90,11 @@ public enum class OverflowPolicy {
     /** Discard the event attempting to enqueue (preserves order). */
     DROP_NEWEST,
 
-    /** Suspend the producing operation until space is available. */
+    /**
+     * Wait (up to `blockTimeoutMillis`) for space instead of dropping.
+     * Diagnostics and other non-suspend fast paths never block; they drop with
+     * [DropReason.OVERFLOW_NEWEST] when the queue is full.
+     */
     BLOCK,
 
     /** Fail the producing operation with an exception. Never silently discards. */

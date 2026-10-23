@@ -1,0 +1,132 @@
+public final class io/ilogger/remote/FileRemoteDeadLetter : io/ilogger/remote/RemoteDeadLetter {
+	public fun <init> (Ljava/nio/file/Path;)V
+	public fun deliver (Lio/ilogger/remote/RemoteBatch;Lio/ilogger/remote/RemoteFailure;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getFile ()Ljava/nio/file/Path;
+}
+
+public final class io/ilogger/remote/FileRemoteSpool : io/ilogger/remote/RemoteSpool {
+	public static final field DEFAULT_MAX_BYTES J
+	public fun <init> (Ljava/nio/file/Path;J)V
+	public synthetic fun <init> (Ljava/nio/file/Path;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun append (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getFile ()Ljava/nio/file/Path;
+	public final fun getMaxBytes ()J
+	public fun peek (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun removeFirst (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun sizeBytes (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/JavaHttpTransport : io/ilogger/remote/RemoteTransport {
+	public static final field MAX_RETRY_AFTER_SECONDS J
+	public fun <init> (Ljava/lang/String;Ljava/net/http/HttpClient;Ljava/time/Duration;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/net/http/HttpClient;Ljava/time/Duration;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun send (Lio/ilogger/remote/RemoteBatch;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/RemoteBatch {
+	public fun <init> (Ljava/lang/String;Ljava/util/List;[BLjava/lang/String;Ljava/lang/String;Ljava/util/Map;)V
+	public final fun getBatchId ()Ljava/lang/String;
+	public final fun getBody ()[B
+	public final fun getContentEncoding ()Ljava/lang/String;
+	public final fun getContentType ()Ljava/lang/String;
+	public final fun getHeaders ()Ljava/util/Map;
+	public final fun getLines ()Ljava/util/List;
+}
+
+public final class io/ilogger/remote/RemoteCircuitBreakerConfig {
+	public fun <init> ()V
+	public fun <init> (IJ)V
+	public synthetic fun <init> (IJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()I
+	public final fun component2 ()J
+	public final fun copy (IJ)Lio/ilogger/remote/RemoteCircuitBreakerConfig;
+	public static synthetic fun copy$default (Lio/ilogger/remote/RemoteCircuitBreakerConfig;IJILjava/lang/Object;)Lio/ilogger/remote/RemoteCircuitBreakerConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getFailureThreshold ()I
+	public final fun getOpenMillis ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/remote/RemoteDeadLetter {
+	public abstract fun deliver (Lio/ilogger/remote/RemoteBatch;Lio/ilogger/remote/RemoteFailure;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/RemoteFailure {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Integer;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Integer;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/Integer;
+	public final fun copy (Ljava/lang/String;Ljava/lang/Integer;)Lio/ilogger/remote/RemoteFailure;
+	public static synthetic fun copy$default (Lio/ilogger/remote/RemoteFailure;Ljava/lang/String;Ljava/lang/Integer;ILjava/lang/Object;)Lio/ilogger/remote/RemoteFailure;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDescription ()Ljava/lang/String;
+	public final fun getStatus ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/remote/RemoteLogSink : io/ilogger/core/LogSink {
+	public static final field CONTENT_TYPE Ljava/lang/String;
+	public fun <init> (Lio/ilogger/remote/RemoteLogSinkConfig;)V
+	public fun <init> (Lio/ilogger/remote/RemoteTransport;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/RemoteLogSinkConfig {
+	public fun <init> (Lio/ilogger/remote/RemoteTransport;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/remote/RemoteSpool;Lio/ilogger/remote/RemoteDeadLetter;Lkotlin/jvm/functions/Function1;ZIIJJLio/ilogger/remote/RemoteCircuitBreakerConfig;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lio/ilogger/remote/RemoteTransport;Lio/ilogger/core/sink/EventCodec;Lio/ilogger/remote/RemoteSpool;Lio/ilogger/remote/RemoteDeadLetter;Lkotlin/jvm/functions/Function1;ZIIJJLio/ilogger/remote/RemoteCircuitBreakerConfig;Lio/ilogger/core/LogClock;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCircuitBreaker ()Lio/ilogger/remote/RemoteCircuitBreakerConfig;
+	public final fun getClock ()Lio/ilogger/core/LogClock;
+	public final fun getCodec ()Lio/ilogger/core/sink/EventCodec;
+	public final fun getDeadLetter ()Lio/ilogger/remote/RemoteDeadLetter;
+	public final fun getGzip ()Z
+	public final fun getHeaders ()Lkotlin/jvm/functions/Function1;
+	public final fun getMaxAttempts ()I
+	public final fun getMaxBatchSize ()I
+	public final fun getOnError ()Lkotlin/jvm/functions/Function1;
+	public final fun getRetryBaseMillis ()J
+	public final fun getRetryMaxMillis ()J
+	public final fun getSpool ()Lio/ilogger/remote/RemoteSpool;
+	public final fun getTransport ()Lio/ilogger/remote/RemoteTransport;
+}
+
+public final class io/ilogger/remote/RemoteResponse {
+	public fun <init> (ILjava/lang/Long;Ljava/lang/String;)V
+	public synthetic fun <init> (ILjava/lang/Long;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBody ()Ljava/lang/String;
+	public final fun getRetryAfterMillis ()Ljava/lang/Long;
+	public final fun getStatus ()I
+	public final fun isPermanent ()Z
+	public final fun isRetryable ()Z
+	public final fun isSuccess ()Z
+}
+
+public final class io/ilogger/remote/RemoteSendException : java/io/IOException {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public abstract interface class io/ilogger/remote/RemoteSpool {
+	public abstract fun append (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun peek (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun removeFirst (ILkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun sizeBytes (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/RemoteSpoolFullException : java/io/IOException {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public abstract interface class io/ilogger/remote/RemoteTransport {
+	public abstract fun send (Lio/ilogger/remote/RemoteBatch;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/remote/RemoteTransportException : java/io/IOException {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+

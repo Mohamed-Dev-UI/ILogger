@@ -21,6 +21,40 @@ Writers of a sink promise: handle concurrent calls (the engine serializes
 per-binding flow but applications may attach one sink to several loggers),
 and never log via ILogger inside `write` (recursion is detected and dropped).
 
+### Payload size guarantees
+
+If a `limits` policy is configured, the engine bounds every event *before*
+dispatch, so every sink — built-in or custom — receives payloads within the
+same ceilings: strings no longer than `maxStringLength`, metadata/changes no
+larger than `maxEntries`, actor attributes capped at `maxActorAttributes`,
+failure summaries capped at `maxFailureFrames`, and an approximate byte
+budget of `maxEventBytes`. Under `LimitAction.REJECT` oversized events never
+reach any sink (reported via `onDrop` as `STRICT_REJECT`); under
+`LimitAction.TRUNCATE` they arrive cut with the `…[truncated]` marker and the
+`ilogger.truncated` metadata flag, counted in `DeliveryStats.truncated`.
+Without `limits`, sinks that need their own ceiling (e.g. a JSONL writer
+rotating files) enforce it themselves — see [24](24-limits-and-constraints.md).
+
+### Tamper-evident chains
+
+For audit scenarios where the log is evidence, wrap any sink in
+`HashChainSink`: every forwarded event gains four `ilogger.trail.*` metadata
+stamps linking it cryptographically to its predecessor (HMAC-SHA256 or
+Ed25519), and `TrailVerifier` later proves whether the stored sequence was
+modified, reordered, inserted into or deleted from. Off by default; keys,
+rotation, verification modes and the threat model are covered in
+[30](30-integrity.md).
+
+### Encryption at rest
+
+The file sink accepts an optional `cipher`; `AesGcmCipher` turns each stored
+line into an authenticated `ilogenc1:<keyId>:…` token, so the file is opaque
+without the key and any modification fails decryption instead of yielding
+altered data. Rotation is handled by a key provider plus a keyring, and
+compression, size rotation and fsync keep working unchanged. Keys, token
+format, rotation and key-loss consequences are covered in
+[31](31-encryption-at-rest.md).
+
 ## Triggers (sinks that cannot break the producer)
 
 When you only need to observe events — persist them into your own table, mirror
@@ -77,8 +111,24 @@ ConsoleLogSink(DefaultTextEventCodec, writeLine = ::println)   // explicit write
 ```
 
 The `writeLine: (String) -> Unit` indirection exists so host platforms route
-output elsewhere — an Android Logcat bridge or an SLF4J adapter — without
-re-implementing the sink. Writes are synchronized (single console lock).
+output elsewhere — an SLF4J adapter, for example — without re-implementing the
+sink. Android apps should use `LogcatSink` from `ilogger-android` instead:
+`println` output is not visible in Logcat.
+
+### LogcatSink (`ilogger-android`)
+
+Android's native diagnostic destination:
+
+```kotlin
+import io.ilogger.android.LogcatSink
+
+sink(LogcatSink(tag = "ILogger"), category = "diagnostics")
+```
+
+Maps TRACE/DEBUG/INFO/WARN/ERROR to the matching `android.util.Log` priority
+(AUDIT → INFO), splits lines above 3,800 characters instead of losing them,
+and supports per-event tags with `tagFor`. It is a `DirectLogSink`, so inline
+dispatch is safe. See [28-android-module.md](28-android-module.md).
 
 ### TextFileSink
 
@@ -89,8 +139,17 @@ TextFileSink(
     file = Path("audit/audit.jsonl"),
     codec = JsonEventCodec,                    // from ilogger-serialization
     append = true,                             // false truncates on start
-    flushEveryWrite = true,                    // durability vs throughput
-    rotation = TextFileSink.Rotation(maxBytesPerFile = 64 * 1024, maxFiles = 5),
+    flushEveryWrite = true,                    // OS durability
+    rotation = TextFileSink.Rotation(
+        maxBytesPerFile = 64 * 1024,
+        maxFiles = 5,                          // archived files kept
+        maxAgeMillis = 24 * 60 * 60 * 1000,    // optional lazy time rotation
+        gzip = true,                           // archive as <name>.<n>.gz
+        maxTotalBytes = 512L * 1024 * 1024,    // optional disk cap
+    ),
+    fsyncEveryWrite = false,                   // true = force to device
+    ioDispatcher = Dispatchers.IO,             // optional override; default below
+    clock = SystemClock,
 )
 ```
 
@@ -100,13 +159,35 @@ TextFileSink(
 | `codec` | `DefaultTextEventCodec` | Use `JsonEventCodec` for machine consumption. |
 | `append` | `true` | `false` truncates an existing file at open. |
 | `flushEveryWrite` | `true` | `false` buffers internally until `flush()` — higher throughput, worse crash durability. |
-| `rotation` | `null` | Size-based ring: files roll to `<name>.1`, `<name>.2`, … newest first, deleting beyond `maxFiles`. `maxFiles = 0` deletes the file and keeps writing. |
+| `rotation` | `null` | Ring policy; see below. |
+| `fsyncEveryWrite` | `false` | Forces every write to the storage device (`FileChannel.force`). Slow; use for audit data that must survive power loss. |
+| `ioDispatcher` | `Dispatchers.IO.limitedParallelism(1, name = "ilogger-file-io")` | Suspend `write`/`flush` always hop to this dispatcher; a per-instance view that never runs two operations at once, so producers never block on disk and writes stay ordered. Override only to move file IO onto your own dispatcher. `writeDirect` always runs synchronously on the caller. |
+| `clock` | `SystemClock` | Time source for `maxAgeMillis`. |
 
-Guarantees: survives process death when OS buffers are flushed
-(`flushEveryWrite = true`); no network behavior; single-process writer
-(two processes on one file is undefined); `IOException`s propagate to the
-engine's error modes. Rotation triggers before the write that would exceed
-`maxBytesPerFile`.
+`TextFileSink.Rotation`:
+
+| Param | Default | Notes |
+|---|---|---|
+| `maxBytesPerFile` | — | Rotation happens before the write that would exceed this size. A single larger event is still written once. |
+| `maxFiles` | — | Archived files kept (`<name>.1` newest … `<name>.maxFiles` oldest). `0` keeps no archives and deletes the active file on each roll. |
+| `maxAgeMillis` | `null` | Lazy time rotation: checked on the next write, not by a background timer. |
+| `gzip` | `false` | Archives are gzip-compressed as `<name>.<n>.gz`; the active file is always plain text. |
+| `maxTotalBytes` | `null` | Enforced after each write. Oldest archives are deleted first; the active file is never deleted, so a cap below its size keeps growing until the next roll. |
+
+Durability levels: **BUFFERED** (`flushEveryWrite = false`) loses buffered
+events on a crash; **OS** (`flushEveryWrite = true`) hands each event to the
+OS page cache; **FSYNC** (`fsyncEveryWrite = true`) forces it to the storage
+device. Guarantees: no network behavior; single-process writer (two processes
+on one file is undefined); rotation is safe for every `maxFiles`, including
+archives left by a previous process; `IOException`s propagate to the engine's
+error modes. Time rotation is lazy: an idle sink rotates on its next event.
+
+Suspend paths never block the producer on disk: `write` and `flush` hop to the
+sink's IO dispatcher (per-instance, single-operation-at-a-time), so under
+`ASYNC`/`BUFFERED` dispatch file IO is fully off the application's critical
+path, and under `INLINE` a suspend `record` still suspends rather than
+blocking the thread. Blocking callers opt in explicitly: `recordBlocking` and
+`writeDirect` write on the calling thread.
 
 ### CompositeLogSink
 
@@ -149,9 +230,73 @@ sinks always move together as one destination".
 | Destination | Durability | Production cost | Speed | Dev speed | Recommended when |
 |---|---|---|---|---|---|
 | Console only | None | Zero infra | Immediate, printed | Instant | Development shells |
+| Logcat (`LogcatSink`, `ilogger-android`) | None; visible while attached | Zero infra | Immediate | Instant | Android diagnostics and development |
 | `TextFileSink` (JSONL) | Survives restart (with flush) | Files to manage/rotate | Fast appends | Minutes | Filesystem-friendly hosts, simple ops |
 | Room (`RoomLogTarget`/`RoomLogSink`) | Survives restart; queryable | DB schema + retention | Batched inserts | Quick — one line with `roomLogs` | Android/long-lived apps querying history |
-| Remote collector (custom sink) | Your own buffering | Network budget, retries | Worst — network | Highest — full sink | Central ops/compliance requirements |
+| Remote collector (`RemoteLogSink`, `ilogger-remote`) | Durable spool across restarts | Network budget, retries, collector | Worst — network | One sink + transport | Central ops/compliance requirements |
+
+### Remote shipping
+
+`ilogger-remote` ships batches over HTTP with retries, a durable spool and a
+dead-letter fallback, so a collector outage does not lose events or block
+producers:
+
+```kotlin
+ILogger.create {
+    sink(
+        RemoteLogSink(
+            RemoteLogSinkConfig(
+                transport = JavaHttpTransport("https://logs.example.com/v1/events"),
+                spool = FileRemoteSpool(Path.of("var/log/ilogger-spool.jsonl")),
+            ),
+        ),
+    )
+    dispatch = DispatchMode.BUFFERED
+}
+```
+
+Full configuration, transport adapters (JDK HTTP, OkHttp, Ktor), TLS pinning
+and delivery semantics: [33-remote-sink.md](33-remote-sink.md).
+
+### Bridging an existing logging stack
+
+ILogger can feed SLF4J/Logback or `java.util.logging`, and consume their
+records as structured events:
+
+```kotlin
+ILogger.create {
+    sink(Slf4jLogSink())          // audit events → existing SLF4J pipeline
+    dispatch = DispatchMode.BUFFERED
+}
+
+val appender = ILoggerAppender(logger).apply { context = logbackContext; start() }
+logbackContext.getLogger(Logger.ROOT_LOGGER_NAME).addAppender(appender)
+```
+
+`ilogger-jul` provides the equivalent `JulLogSink`/`JulLogHandler`. Level
+mapping, MDC/key-value context, exception preservation and loop protection
+are covered in [34-logging-bridges.md](34-logging-bridges.md).
+
+### OpenTelemetry traces and metrics
+
+`ilogger-otel` connects the pipeline to an OTel SDK without making core depend
+on it (the OTel API is `compileOnly`):
+
+```kotlin
+ILogger.create {
+    enricher(OtelTraceEnricher())                       // traceId/spanId on every event
+    sink(OtelSinkMetrics.wrap(ConsoleLogSink()))        // writes/errors/duration
+}
+
+val metrics = OtelLoggerMetrics(logger, meterProvider.get("app"))
+// optional: sink(OtelSpanLogSink()) exports events as instantaneous spans
+```
+
+Trace ids are captured at admission, where the caller's span is still current;
+sinks can export either the correlated events or one span per event. Queue
+depth, drops by reason, truncation and per-sink latency are exposed as
+observable instruments, so no background thread polls the engine. Install,
+propagation and cardinality guidance: [35-opentelemetry.md](35-opentelemetry.md).
 
 ## Writing a custom sink (verified — `examples/custom-sink`)
 
@@ -174,7 +319,7 @@ Compositional patterns:
 | UI tail (SDK) | bridge into `MutableStateFlow`, capped list |
 | Durable audit file | `TextFileSink` + `JsonEventCodec` + category binding |
 | Persist in-app DB without wiring a schema | `onEvents` trigger or `RoomLogSink` |
-| Ship to a collector | implement write() with a batching client |
+| Ship to a collector | `RemoteLogSink` + a `RemoteTransport` (see [33](33-remote-sink.md)) |
 
 ## The UI tail example (Android `:app`)
 

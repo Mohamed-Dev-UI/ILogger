@@ -1,0 +1,107 @@
+public final class io/ilogger/annotations/DispatchMode : java/lang/Enum {
+	public static final field ASYNC Lio/ilogger/annotations/DispatchMode;
+	public static final field BUFFERED Lio/ilogger/annotations/DispatchMode;
+	public static final field DEFAULT Lio/ilogger/annotations/DispatchMode;
+	public static final field INLINE Lio/ilogger/annotations/DispatchMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/annotations/DispatchMode;
+	public static fun values ()[Lio/ilogger/annotations/DispatchMode;
+}
+
+public abstract interface annotation class io/ilogger/annotations/Log : java/lang/annotation/Annotation {
+	public abstract fun action ()Ljava/lang/String;
+	public abstract fun actor ()Ljava/lang/String;
+	public abstract fun before ()Z
+	public abstract fun category ()Ljava/lang/String;
+	public abstract fun changes ()[Lio/ilogger/annotations/LogChange;
+	public abstract fun description ()Ljava/lang/String;
+	public abstract fun dispatch ()Lio/ilogger/annotations/DispatchMode;
+	public abstract fun entity ()Ljava/lang/Class;
+	public abstract fun entityId ()Ljava/lang/String;
+	public abstract fun level ()Lio/ilogger/annotations/LogLevel;
+	public abstract fun metadata ()[Lio/ilogger/annotations/LogMeta;
+	public abstract fun onCancellation ()Lio/ilogger/annotations/OnCancellation;
+	public abstract fun onFailure ()Z
+	public abstract fun onSuccess ()Z
+	public abstract fun sampling ()D
+	public abstract fun schemaVersion ()I
+	public abstract fun useClassDefaults ()Z
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogActions : java/lang/annotation/Annotation {
+	public abstract fun actions ()[Ljava/lang/String;
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogChange : java/lang/annotation/Annotation {
+	public abstract fun field ()Ljava/lang/String;
+	public abstract fun from ()Ljava/lang/String;
+	public abstract fun to ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogConfig : java/lang/annotation/Annotation {
+	public abstract fun category ()Ljava/lang/String;
+	public abstract fun dispatch ()Lio/ilogger/annotations/DispatchMode;
+	public abstract fun level ()Lio/ilogger/annotations/LogLevel;
+	public abstract fun sampling ()D
+	public abstract fun sensitive ()Lio/ilogger/annotations/SensitiveHandling;
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogDao : java/lang/annotation/Annotation {
+	public abstract fun enabled ()Z
+	public abstract fun hilt ()Z
+	public abstract fun koin ()Z
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogEntityId : java/lang/annotation/Annotation {
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogExclude : java/lang/annotation/Annotation {
+	public abstract fun reason ()Ljava/lang/String;
+}
+
+public final class io/ilogger/annotations/LogLevel : java/lang/Enum {
+	public static final field AUDIT Lio/ilogger/annotations/LogLevel;
+	public static final field DEBUG Lio/ilogger/annotations/LogLevel;
+	public static final field ERROR Lio/ilogger/annotations/LogLevel;
+	public static final field INFO Lio/ilogger/annotations/LogLevel;
+	public static final field TRACE Lio/ilogger/annotations/LogLevel;
+	public static final field WARN Lio/ilogger/annotations/LogLevel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/annotations/LogLevel;
+	public static fun values ()[Lio/ilogger/annotations/LogLevel;
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogMeta : java/lang/annotation/Annotation {
+	public abstract fun adapter ()Ljava/lang/Class;
+	public abstract fun extractor ()Ljava/lang/Class;
+	public abstract fun inject ()Z
+	public abstract fun name ()Ljava/lang/String;
+	public abstract fun sensitive ()Lio/ilogger/annotations/SensitiveHandling;
+	public abstract fun value ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/ilogger/annotations/LogSensitive : java/lang/annotation/Annotation {
+	public abstract fun reason ()Ljava/lang/String;
+}
+
+public abstract interface annotation class io/ilogger/annotations/NoLog : java/lang/annotation/Annotation {
+}
+
+public final class io/ilogger/annotations/OnCancellation : java/lang/Enum {
+	public static final field LOG Lio/ilogger/annotations/OnCancellation;
+	public static final field SKIP Lio/ilogger/annotations/OnCancellation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/annotations/OnCancellation;
+	public static fun values ()[Lio/ilogger/annotations/OnCancellation;
+}
+
+public final class io/ilogger/annotations/SensitiveHandling : java/lang/Enum {
+	public static final field DENY Lio/ilogger/annotations/SensitiveHandling;
+	public static final field HASH Lio/ilogger/annotations/SensitiveHandling;
+	public static final field MASK Lio/ilogger/annotations/SensitiveHandling;
+	public static final field OMIT Lio/ilogger/annotations/SensitiveHandling;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/annotations/SensitiveHandling;
+	public static fun values ()[Lio/ilogger/annotations/SensitiveHandling;
+}
+

@@ -15,6 +15,10 @@ import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.math.BigDecimal
+import java.time.Duration
+import java.time.Instant
+import java.util.UUID
 
 class JsonEventCodecTest {
 
@@ -31,7 +35,7 @@ class JsonEventCodecTest {
             "title" to "ship it",
             "priority" to 5,
             "verified" to false,
-            "weird" to listOf("x", "y"), // degrades to toString()
+            "weird" to Pair("a", "b"), // unknown types degrade to toString()
             "absent" to null,
         ),
         changes = listOf(FieldChange(field = "title", before = "old", after = "new")),
@@ -68,8 +72,8 @@ class JsonEventCodecTest {
         assertEquals("ship it", metadata.getString("title"))
         assertEquals(5, metadata.getInt("priority"))
         assertEquals(false, metadata.getBoolean("verified"))
-        // Heterogeneous values degrade deterministically, never throw.
-        assertEquals("[x, y]", (metadata["weird"] as JsonPrimitive).content)
+        // Unknown values degrade deterministically, never throw.
+        assertEquals("(a, b)", (metadata["weird"] as JsonPrimitive).content)
         assertTrue(metadata["absent"] is JsonNull)
 
         val change = (json["changes"] as JsonArray).first().jsonObject
@@ -118,6 +122,88 @@ class JsonEventCodecTest {
     fun `output is single line`() {
         val encoded = JsonEventCodec.encode(fullEvent())
         assertEquals(1, encoded.lines().size)
+    }
+
+    @Test
+    fun `canonical forms for expanded value types`() {
+        val event = LogEvent(
+            id = "e4",
+            timestampMillis = 1L,
+            level = LogLevel.AUDIT,
+            action = "value.shapes",
+            metadata = mapOf(
+                "char" to 'x',
+                "uint" to 7u,
+                "ulong" to 9_223_372_036_854_775_807u,
+                "uuid" to UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
+                "instant" to Instant.parse("2026-01-01T00:00:00Z"),
+                "duration" to Duration.ofHours(2),
+                "decimal" to BigDecimal("19.99"),
+                "intArray" to intArrayOf(1, 2, 3),
+                "list" to listOf("x", "y"),
+                "map" to mapOf("env" to "test"),
+                "nested" to listOf(listOf("deep")),
+                "deepNest" to listOf(listOf(listOf("x"))),
+                "object" to Pair("a", "b"),
+            ),
+        )
+        val json = JsonEventCodec.toJsonElement(event)
+        val metadata = json.getValue("metadata").jsonObject
+
+        assertEquals("\"x\"", metadata.getValue("char").toString())
+        assertEquals("7", (metadata.getValue("uint") as JsonPrimitive).content)
+        assertTrue((metadata.getValue("uint") as JsonPrimitive).isString.not())
+        assertEquals("9223372036854775807", (metadata.getValue("ulong") as JsonPrimitive).content)
+        assertEquals("\"123e4567-e89b-12d3-a456-426614174000\"", metadata.getValue("uuid").toString())
+        assertEquals("\"2026-01-01T00:00:00Z\"", metadata.getValue("instant").toString())
+        assertEquals("\"PT2H\"", metadata.getValue("duration").toString())
+        assertEquals("19.99", (metadata.getValue("decimal") as JsonPrimitive).content)
+        assertEquals("[1,2,3]", metadata.getValue("intArray").toString())
+        assertEquals("[\"x\",\"y\"]", metadata.getValue("list").toString())
+        assertEquals("{\"env\":\"test\"}", metadata.getValue("map").toString())
+        assertEquals("[[\"deep\"]]", metadata.getValue("nested").toString())
+        // Depth guard: containers deeper than two levels render a marker and
+        // never call toString() on the container.
+        assertEquals("[[\"${JsonEventCodec.MAX_DEPTH_MARKER}\"]]", metadata.getValue("deepNest").toString())
+        assertEquals("\"(a, b)\"", metadata.getValue("object").toString())
+    }
+
+    @Test
+    fun `cyclic and pathologically deep structures encode without stack overflow`() {
+        val cyclic = HashMap<String, Any?>()
+        cyclic["self"] = cyclic
+        val cyclicList = ArrayList<Any?>()
+        cyclicList.add(cyclicList)
+
+        var deep: Any? = "leaf"
+        repeat(10_000) { deep = listOf(deep) }
+
+        val event = LogEvent(
+            id = "e5",
+            timestampMillis = 1L,
+            level = LogLevel.INFO,
+            action = "types.weird",
+            metadata = mapOf(
+                "cyclicMap" to cyclic,
+                "cyclicList" to cyclicList,
+                "deep" to deep,
+            ),
+        )
+        val metadata = JsonEventCodec.toJsonElement(event).getValue("metadata").jsonObject
+
+        // The cycle is cut at depth two; the marker replaces the container.
+        assertEquals(
+            "{\"self\":{\"self\":\"${JsonEventCodec.MAX_DEPTH_MARKER}\"}}",
+            metadata.getValue("cyclicMap").toString(),
+        )
+        assertEquals(
+            "[[\"${JsonEventCodec.MAX_DEPTH_MARKER}\"]]",
+            metadata.getValue("cyclicList").toString(),
+        )
+        assertEquals(
+            "[[\"${JsonEventCodec.MAX_DEPTH_MARKER}\"]]",
+            metadata.getValue("deep").toString(),
+        )
     }
 
     // -- small local helpers (avoid extra test deps) --------------------------------

@@ -1,8 +1,10 @@
 package ksp.test.runner
 
+import ksp.test.library.ReservedNamesRepository
 import ksp.test.library.Task
 import ksp.test.library.TaskRepository
 import ksp.test.library.TaskStatus
+import kotlin.coroutines.cancellation.CancellationException
 
 /** In-memory implementation; the generated wrapper delegates into this. */
 class InMemoryTaskRepository : TaskRepository {
@@ -24,6 +26,14 @@ class InMemoryTaskRepository : TaskRepository {
         throw IllegalStateException("db offline")
     }
 
+    override suspend fun cancelDefault(taskId: Long) {
+        throw CancellationException("cancel-default")
+    }
+
+    override suspend fun cancelLogged(taskId: Long) {
+        throw CancellationException("cancel-logged")
+    }
+
     override fun findById(taskId: Long): Task =
         Task(taskId, "found", 1, TaskStatus.OPEN, emptyList())
 
@@ -36,4 +46,20 @@ class InMemoryTaskRepository : TaskRepository {
     override suspend fun inlineDelete(task: Task) {}
 
     override suspend fun passthrough(value: Int): Int = value + 1
+}
+
+class InMemoryReservedNamesRepository : ReservedNamesRepository {
+
+    override suspend fun save(result: Task, iloggerResult: Task): Long = result.id
+
+    override fun login(context: Task, actor: String): Boolean = actor.isNotBlank()
+
+    override suspend fun fail(
+        logger: String,
+        iloggerDelegate: String,
+        error: Throwable?,
+        task: Task,
+    ): Boolean {
+        throw IllegalStateException("$logger/$iloggerDelegate/${error?.message}/${task.id}")
+    }
 }

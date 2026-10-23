@@ -27,7 +27,8 @@ Both events print `corr=req-abc`; later queries (`WHERE schemaId =
 | Domain-supplied id (order no., session id) | `withCorrelation("order-1042")` | Business-meaningful: all events on one order link | Id reuse across runs can over-correlate | Best *inside* a bounded context with unique ids |
 
 **Recommended flow:** incoming header when present, UUID fallback otherwise
-(the `HttpAudit` plugin implements exactly this — see
+(the `HttpAudit` server plugin implements exactly this; `HttpAuditClient`
+forwards an ambient correlation id on outbound calls — see
 [20-ktor-integration.md](20-ktor-integration.md)), and a domain id when the
 "story" is a business object rather than a request.
 

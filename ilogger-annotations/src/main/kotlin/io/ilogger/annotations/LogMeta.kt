@@ -35,13 +35,27 @@ import kotlin.reflect.KClass
  *   makes such references a compile error so sensitive data can never be
  *   included by omission.
  * @param extractor Optional class implementing
- *   `io.ilogger.core.LogValueExtractor` with a no-argument constructor. When
- *   present, the extractor converts the selected value into loggable
- *   primitives. The class is instantiated once per generated wrapper.
+ *   `io.ilogger.core.LogValueExtractor`. When present, the extractor converts
+ *   the selected value into loggable primitives. Generated wrappers resolve it
+ *   once through `ILogger.extractors` — a factory registered with
+ *   `ILogger.create { extractor(...) }` wins; otherwise the class is
+ *   constructed once via its public no-argument constructor. Its output is
+ *   validated: non-loggable values and thrown exceptions omit the entry.
+ * @param adapter Optional class implementing `io.ilogger.core.ValueAdapter`
+ *   with a no-argument constructor. When present, the adapter's
+ *   `render(value)` result becomes the metadata value. Mutually exclusive
+ *   with [extractor]; the class is instantiated once per generated wrapper.
+ * @param inject Requires [extractor] to be registered on the logger before its
+ *   first use; generated code does not construct a fallback. Use it when the
+ *   extractor's constructor needs application services, and register the
+ *   factory in `ILogger.create { extractor(...) }`. Only meaningful together
+ *   with [extractor].
  */
 public annotation class LogMeta(
     public val value: String,
     public val name: String = "",
     public val sensitive: SensitiveHandling = SensitiveHandling.DENY,
     public val extractor: KClass<*> = Nothing::class,
+    public val adapter: KClass<*> = Nothing::class,
+    public val inject: Boolean = false,
 )

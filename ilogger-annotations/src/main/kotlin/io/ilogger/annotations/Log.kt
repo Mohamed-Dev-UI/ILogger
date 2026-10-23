@@ -84,10 +84,22 @@ import kotlin.reflect.KClass
  * @param onFailure Emit a failure event (outcome `FAILURE`) if the operation
  *   throws, without altering the thrown exception. Failure events include the
  *   exception class name and message.
+ * @param onCancellation How to treat a `CancellationException` thrown by a
+ *   suspend function. [OnCancellation.SKIP] (default) rethrows without an
+ *   event; [OnCancellation.LOG] rethrows and emits a FAILURE marked as
+ *   cancelled. Cancellation is always rethrown by identity, and a logging
+ *   failure never replaces it.
  * @param sampling Optional override of the diagnostic sampling rate for this
  *   event, in `[0.0, 1.0]`. Ignored for [LogLevel.AUDIT] events (audit events
  *   are never sampled by default; sampling an audit event deliberately is a
  *   compile error).
+ * @param useClassDefaults When true (default), fields left at their defaults
+ *   (`level = AUDIT`, `category = ""`, `dispatch = DEFAULT`, `sampling = -1.0`)
+ *   inherit from a class/interface-level [LogConfig] when one is present.
+ *   Explicit values always win. Because `AUDIT` is both the default and a
+ *   meaningful value, a method that must stay `AUDIT` under a non-AUDIT class
+ *   config sets `useClassDefaults = false` (disabling all inheritance for that
+ *   method).
  * @param description Free-form human documentation of the event, embedded in
  *   generated code and tooling. Not included in events.
  */
@@ -108,6 +120,8 @@ public annotation class Log(
     public val before: Boolean = false,
     public val onSuccess: Boolean = true,
     public val onFailure: Boolean = false,
+    public val onCancellation: OnCancellation = OnCancellation.SKIP,
     public val sampling: Double = -1.0,
+    public val useClassDefaults: Boolean = true,
     public val description: String = "",
 )

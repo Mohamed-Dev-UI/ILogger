@@ -1,6 +1,7 @@
 package io.ilogger.core
 
 import io.ilogger.annotations.LogLevel
+import kotlin.coroutines.cancellation.CancellationException
 
 /**
  * What phase of an operation an event describes.
@@ -48,7 +49,17 @@ public class LogFailure(
     public val message: String?,
     public val rootCauseType: String?,
     public val stackSummary: List<String>,
+    /**
+     * `true` when the failure was a coroutine cancellation rather than a
+     * business error. Cancellation events are only produced when generated
+     * instrumentation opts in with `@Log(onCancellation = LOG)`.
+     */
+    public val cancelled: Boolean = false,
 ) {
+    /** Alias for [cancelled], readable as a predicate. */
+    public val isCancellation: Boolean
+        get() = cancelled
+
     public companion object {
         public const val DEFAULT_STACK_FRAMES: Int = 8
 
@@ -60,6 +71,7 @@ public class LogFailure(
                 message = error.message,
                 rootCauseType = if (root !== error) root::class.java.name else null,
                 stackSummary = error.stackTrace.take(maxStackFrames).map { it.toString() },
+                cancelled = error is CancellationException,
             )
         }
     }

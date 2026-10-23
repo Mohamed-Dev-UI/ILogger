@@ -39,3 +39,18 @@ public interface LogSink : AutoCloseable {
     /** Releases resources. Default: no-op. */
     override fun close() {}
 }
+
+/**
+ * Optional synchronous fast path for sinks that can accept an event on the
+ * calling thread without suspending (console output, in-memory collectors).
+ *
+ * The engine uses it for diagnostics under [io.ilogger.annotations.DispatchMode.INLINE]:
+ * when every matched sink implements this interface, diagnostic events are
+ * delivered without `runBlocking` or coroutine machinery. Implementations must
+ * not block indefinitely; a slow sink should not implement this interface
+ * (the engine then falls back to the regular dispatch path).
+ */
+public interface DirectLogSink : LogSink {
+    /** Writes one event synchronously on the caller thread. */
+    public fun writeDirect(event: LogEvent)
+}

@@ -1,0 +1,8 @@
+public final class io/ilogger/serialization/JsonEventCodec : io/ilogger/core/sink/EventCodec {
+	public static final field INSTANCE Lio/ilogger/serialization/JsonEventCodec;
+	public static final field MAX_DEPTH_MARKER Ljava/lang/String;
+	public final fun decode (Ljava/lang/String;)Lio/ilogger/core/LogEvent;
+	public fun encode (Lio/ilogger/core/LogEvent;)Ljava/lang/String;
+	public final fun toJsonElement (Lio/ilogger/core/LogEvent;)Lkotlinx/serialization/json/JsonObject;
+}
+

@@ -58,6 +58,33 @@ No annotation, no processor: the audit line lives where the operation does.
 Everything is optional at compile time — which is also the weakness: nothing
 forces you to record entity/actor, and a refactor can silently drop the line.
 
+#### Draft-based recording
+
+When a call site reads better as a value than as fourteen parameters (or when
+you build the event description in one place and record it in another), use
+`LogEventDraft`. Only `action` is required:
+
+```kotlin
+val draft = LogEventDraft(
+    action = OrderActions.CHECKED_OUT,
+    entity = "Order",
+    entityId = receipt.orderId,
+    metadata = mapOf("itemCount" to cart.size),
+)
+
+logger.record(draft)              // suspend; honors ambient coroutine context
+logger.recordNow(draft)           // synchronous contexts, thread-local context
+logger.recordBlocking(draft)      // explicit admission result + timeout
+```
+
+`dispatch` and `sampling` on the draft are recording hints and are not stored
+on the resulting event. The logger still mints the event id and timestamp and
+resolves correlation/causation ids from the ambient context.
+
+`LogEvent` defensively copies `metadata` and `changes` into unmodifiable
+containers at construction, so mutating your own map or list after recording
+can never rewrite an event that is already queued or persisted.
+
 ### Approach C — `recordNow(...)` for non-suspend code
 
 ```kotlin

@@ -1,7 +1,7 @@
 package io.ilogger.core.sink
 
+import io.ilogger.core.DirectLogSink
 import io.ilogger.core.LogEvent
-import io.ilogger.core.LogSink
 
 /**
  * Writes encoded event text to the process console via an injected writer.
@@ -15,13 +15,15 @@ import io.ilogger.core.LogSink
 public class ConsoleLogSink(
     private val codec: EventCodec = DefaultTextEventCodec,
     private val writeLine: (String) -> Unit,
-) : LogSink {
+) : DirectLogSink {
 
     public constructor(codec: EventCodec = DefaultTextEventCodec) : this(codec, ::println)
 
     private val lock = Any()
 
-    override suspend fun write(event: LogEvent) {
+    override suspend fun write(event: LogEvent): Unit = writeDirect(event)
+
+    override fun writeDirect(event: LogEvent) {
         val line = codec.encode(event)
         synchronized(lock) { writeLine(line) }
     }

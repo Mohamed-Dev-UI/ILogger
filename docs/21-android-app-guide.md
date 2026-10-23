@@ -7,6 +7,12 @@ context, correlation/causation, sensitive-value policies, category routing,
 Room and JSONL sinks, retention, dispatch/backpressure policies, sampling,
 manual instrumentation and TestKit — against the real engine, not mocks.
 
+Android-specific behavior (Logcat output, process-lifecycle flush, crash
+handoff, StrictMode-safe file writing, session actors, optional WorkManager
+shipping) lives in [`ilogger-android`](28-android-module.md). The app wires
+those classes through Hilt instead of using `ILoggerAndroid.install`, because
+it also needs Room and an in-app live feed.
+
 One app is enough: each concern is a screen, and every screen drives the same
 application-scoped logger. The only server-only integration is Ktor; it is
 covered by [`examples/server`](../examples/server) and the Recipes screen.
@@ -18,7 +24,7 @@ covered by [`examples/server`](../examples/server) and the Recipes screen.
 | **Overview** | Live metrics from an `onEvents` trigger, top actions, categories, the exact logger profile |
 | **Task board** | `@Log` repository + `@LogDao` DAO, six actor types, tenant attributes, correlation, `before`, `onFailure`, `LogChange`, extractors, `suppressSources`, manual `record`, Flow collection, `recordNow` + `LogContexts.onCurrentThread`, diagnostics, failure propagation and causation |
 | **Live events** | The catch-all in-memory sink: filtering by level/outcome/category/text, `onDispatchError` issues, full typed event details and lossless JSON |
-| **Room audit** | `RoomLogTarget`, library-owned `ilogger_events` table, queued `room.database.created/opened` lifecycle events, retention sweeps, a second connection in the device test |
+| **Room audit** | `RoomLogTarget`, library-owned `ilogger_events` table, queued `room.database.created/opened` lifecycle events, live `observe` rows, retention sweeps, a second connection in the device test |
 | **JSONL files** | `TextFileSink` + `JsonEventCodec`, audit-only category routing, size-based rotation, read-back of the real file |
 | **Protection** | `@LogSensitive` contract, HASH/MASK on the same value, raw-value leak check, `@LogExclude` and the compile-time refusal list |
 | **Engine lab** | Bounded buffer, DROP_OLDEST vs BLOCK, RETRY, INLINE, PROPAGATE, sampling, `minLevel` and the runtime `enabled` switch — each run against an independent logger |
@@ -64,6 +70,7 @@ object LoggingModule {
         metrics: AuditMetrics,
         target: RoomLogTarget,
         files: AuditFileStore,
+        crashBuffer: CrashBuffer,
     ): ILogger = ILogger.create {
         dispatch = DispatchMode.BUFFERED
         bufferSize = 512
@@ -75,15 +82,14 @@ object LoggingModule {
 
         sink(feed.sink)                                       // catch-all live view
         sink(target)                                          // catch-all durable trail
-        sink(ConsoleLogSink { line -> Log.d("ILogger", line) },
+        sink(crashBuffer)                                     // crash handoff ring
+        sink(LogcatSink(tag = "ILogger"),
              category = DIAGNOSTIC_CATEGORY)                  // Logcat, low volume
-        sink(TextFileSink(
-            file = files.file.toPath(),
+        sink(AndroidFileSink.create(
+            file = files.file,
             codec = JsonEventCodec,
-            append = true,
-            flushEveryWrite = true,
             rotation = TextFileSink.Rotation(maxBytesPerFile = 12 * 1024, maxFiles = 3),
-        ), category = AUDIT_CATEGORY)                         // strict forensics
+        ), category = AUDIT_CATEGORY)                         // strict forensics, off main
         onEvents { events -> metrics.record(events) }         // failure-isolated UI metrics
         onDispatchError = { event, sink, error -> feed.reportDispatchError(event, sink, error) }
     }

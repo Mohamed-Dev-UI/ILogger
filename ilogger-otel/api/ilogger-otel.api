@@ -1,0 +1,75 @@
+public final class io/ilogger/otel/OtelLoggerMetrics : java/lang/AutoCloseable {
+	public fun <init> (Lio/ilogger/core/ILogger;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/ilogger/core/ILogger;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public final fun getNamePrefix ()Ljava/lang/String;
+}
+
+public final class io/ilogger/otel/OtelSinkMetrics : io/ilogger/core/LogSink {
+	public static final field Companion Lio/ilogger/otel/OtelSinkMetrics$Companion;
+	public fun <init> (Lio/ilogger/core/LogSink;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/ilogger/core/LogSink;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/otel/OtelSinkMetrics$Companion {
+	public final fun wrap (Lio/ilogger/core/LogSink;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;Ljava/lang/String;)Lio/ilogger/core/LogSink;
+	public static synthetic fun wrap$default (Lio/ilogger/otel/OtelSinkMetrics$Companion;Lio/ilogger/core/LogSink;Lio/opentelemetry/api/metrics/Meter;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/LogSink;
+}
+
+public final class io/ilogger/otel/OtelSpanLogSink : io/ilogger/core/LogSink {
+	public fun <init> ()V
+	public fun <init> (Lio/opentelemetry/api/trace/Tracer;Ljava/lang/String;Ljava/lang/String;ZII)V
+	public synthetic fun <init> (Lio/opentelemetry/api/trace/Tracer;Ljava/lang/String;Ljava/lang/String;ZIIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/otel/OtelTrace {
+	public static final field INSTANCE Lio/ilogger/otel/OtelTrace;
+	public static final field TRACEPARENT_ATTRIBUTE Ljava/lang/String;
+	public final fun currentContextAttributes ()Ljava/util/Map;
+	public final fun currentSpanContext ()Lio/opentelemetry/api/trace/SpanContext;
+	public final fun currentTraceParent ()Lio/ilogger/otel/W3cTraceParent;
+	public final fun withCurrentTrace (Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun withIncomingTraceParent (Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun withRemoteParent (Lio/ilogger/otel/W3cTraceParent;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/otel/OtelTraceEnricher : io/ilogger/core/LogEventEnricher {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun enrich (Lio/ilogger/core/LogContext;)Ljava/util/Map;
+	public final fun getMetadataPrefix ()Ljava/lang/String;
+}
+
+public final class io/ilogger/otel/W3cTraceParent {
+	public static final field Companion Lio/ilogger/otel/W3cTraceParent$Companion;
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Z)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Z
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Z)Lio/ilogger/otel/W3cTraceParent;
+	public static synthetic fun copy$default (Lio/ilogger/otel/W3cTraceParent;Ljava/lang/String;Ljava/lang/String;ZILjava/lang/Object;)Lio/ilogger/otel/W3cTraceParent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun format ()Ljava/lang/String;
+	public final fun getSampled ()Z
+	public final fun getSpanId ()Ljava/lang/String;
+	public final fun getTraceId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public final fun toContextAttributes ()Ljava/util/Map;
+	public final fun toSpanContext ()Lio/opentelemetry/api/trace/SpanContext;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/otel/W3cTraceParent$Companion {
+	public final fun parse (Ljava/lang/String;)Lio/ilogger/otel/W3cTraceParent;
+}
+

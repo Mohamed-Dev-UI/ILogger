@@ -6,6 +6,8 @@ import com.mohamed.dev.ui.ilogger.logging.LoggingModule
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.ilogger.core.ILogger
 import io.ilogger.room.RoomLogEntity
+import io.ilogger.room.RoomLogPage
+import io.ilogger.room.observe
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -15,8 +17,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,24 +46,30 @@ class AuditTrailController @Inject constructor(
     val messages: SharedFlow<String> = _messages.asSharedFlow()
 
     init {
+        // The DAO's Room-observed Flow re-emits whenever the table changes, so
+        // the viewer follows new events without polling.
+        scope.launch {
+            database.logDao()
+                .observe(page = RoomLogPage(limit = 250))
+                .catch { error -> _messages.tryEmit("Room observation failed: ${error.message}") }
+                .collect { rows -> _state.update { it.copy(rows = rows) } }
+        }
         refresh()
     }
 
     fun refresh() {
         scope.launch {
-            _state.value = _state.value.copy(loading = true)
+            _state.update { it.copy(loading = true) }
             logger.flush()
-            val rows = runCatching { database.logDao().recent(limit = 250) }
-                .onFailure { _messages.tryEmit("Room read failed: ${it.message}") }
-                .getOrDefault(emptyList())
             val bytes = context.getDatabasePath(LoggingModule.DATABASE_NAME)
                 .let { if (it.exists()) it.length() else 0L }
-            _state.value = AuditTrailState(
-                rows = rows,
-                databaseBytes = bytes,
-                refreshedAtMillis = System.currentTimeMillis(),
-                loading = false,
-            )
+            _state.update {
+                it.copy(
+                    databaseBytes = bytes,
+                    refreshedAtMillis = System.currentTimeMillis(),
+                    loading = false,
+                )
+            }
         }
     }
 

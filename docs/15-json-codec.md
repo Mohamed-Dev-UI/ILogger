@@ -48,28 +48,70 @@ With actor/attribution/failure:
 
 ## Value projection rules
 
-Metadata values are projected onto JSON primitives:
+Metadata values are projected onto JSON:
 
 | Type | Result |
 |---|---|
 | `String` | JSON string |
 | `Boolean` | JSON boolean |
 | `Number` | JSON number |
+| `Char` | JSON string |
+| `UInt`/`ULong`/`UShort`/`UByte` | JSON number (exact, via the unsigned overloads) |
+| `java.util.UUID` | JSON string (`toString()`) |
+| `java.time.Instant` | JSON string (ISO-8601) |
+| `java.time.Duration` | JSON string (ISO-8601, e.g. `PT2H`) |
+| `java.math.BigDecimal`/`BigInteger` | JSON number (exact `toString()` form) |
 | `null` | `null` |
-| anything else | `toString()` string (deterministic degradation, never throws) |
+| one-level `List`/`Set`/`Iterable`/array | JSON array (elements projected by these rules) |
+| one-level `Map` | JSON object (keys via `toString()`, values projected by these rules) |
+| containers deeper than two levels | `"<max-depth>"` marker string (see below) |
+| anything else (incl. value classes) | `toString()` string (deterministic degradation, never throws) |
 
-This last rule is why arbitrary extractor outputs (e.g. a `List`) cannot
-corrupt a JSONL line.
+Container projection has a depth guard: containers nested more than two
+levels deep render the literal marker `JsonEventCodec.MAX_DEPTH_MARKER`
+(`"<max-depth>"`) in place of the container, so cyclic or deeply nested
+structures can never recurse unboundedly — the guard cuts the walk *before*
+any `toString()` is attempted, which matters because a cyclic container's
+`toString()` alone would overflow the stack. Scalar values are never
+degraded by depth.
+
+This last rule is why arbitrary extractor outputs cannot corrupt a JSONL
+line — and registering a `ValueAdapter` for a value class is the supported
+way to render it as its underlying value instead of `toString()`.
+
+## Decoding (round trip)
+
+`JsonEventCodec.decode(line)` parses one JSON line back into a `LogEvent` —
+the inverse projection of the encoder. Required members: `id`,
+`timestampMillis` and `action`; `level` defaults to `AUDIT`,
+`actionVersion` to 1, `outcome` to `success`. Metadata comes back as plain
+Kotlin values (`null`, `String`, `Boolean`, `Long`, `Double`,
+`Map<String, Any?>`, `List<Any?>`). Malformed input (invalid JSON, a non-object
+line, or a missing required member — including `change.field` and
+`failure.errorType`) throws `IllegalArgumentException` naming the member.
+
+The projection is lossy where encoding already is: `cancelled` failures decode
+as regular failures, and containers deeper than the codec's structure depth
+come back as the `"<max-depth>"` marker string.
+
+Round-trip stability is what makes hash-chain verification work on JSONL
+files: `decode` reproduces the canonical shapes `TrailVerifier` recomputes
+stamps from — see [30](30-integrity.md).
+
+```kotlin
+val events = File("audit.jsonl").readLines()
+    .filter { it.isNotBlank() }
+    .map { JsonEventCodec.decode(it) }
+```
 
 ## Consumers
 
-- the codec never throws on unexpected value types;
+- the codec never throws on unexpected value types **when encoding**;
+  `decode` is strict instead — a malformed line fails loudly with its cause;
 - `toJsonElement(event)` is public for consumers who post-process
   (e.g. enrich before shipping to a collector);
 - the fail message stack: `failure.stackSummary` is a capped array — payload
-  size is bounded by design;
-- the module is **encode-only**: there is no `decode`/round-trip parser —
-  JSONL lines are meant for consumers, not reload into `LogEvent`.
+  size is bounded by design.
 
 Quick consumer recipes:
 

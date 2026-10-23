@@ -1,7 +1,7 @@
 # 19. Room integration (`ilogger-room`)
 
 Room DAOs are the canonical `@Log` host: Room 2.8.5 is KMP (JVM + Android),
-and one annotated DAO interface serves both. Integration has **three
+and one annotated DAO interface serves both. Integration has **five
 complementary layers**:
 
 ## Layer 1 — DAO instrumentation (processor-side, no extra module needed)
@@ -265,6 +265,187 @@ val db = Room.databaseBuilder<AppDatabase>(context, "app.db")
   `onError` callback and never fail the write that triggered them.
 - Retention is **opt-in**: no policy → nothing is ever purged.
 
+### Retention while the app is idle
+
+Write-triggered sweeps never run when nothing is logged, so a long-idle app
+keeps expired rows. `RoomLogRetentionScheduler` runs the same policy on a
+timer:
+
+```kotlin
+val retention = RoomLogRetention.keepDays(30)
+RoomLogRetentionScheduler(db.logDao(), retention).start(appScope)
+```
+
+The first sweep runs immediately, then one per `sweepEveryMillis`. A delayed
+coroutine that resumes late (device asleep) sweeps as soon as it runs, so
+missed windows are caught up. Errors go to the optional `onError` handler and
+never cancel the loop; cancel the job or its scope to stop it. Running the
+scheduler alongside a `RoomLogTarget` with the same policy is harmless — both
+delete by cutoff and the second sweep simply removes nothing.
+
+### Per-category retention, legal holds and erasure
+
+The single-window policy covers uniform ages. When categories/entities need
+different windows, when records are under legal hold, or when a subject asks
+for erasure, use the compliance surface in the same module:
+`RoomLogRetentionPolicy` + `RoomLogRetentionEnforcer` (hold-aware sweeps and a
+`beforePurge` archive hook), `RoomLogLegalHoldRegistry`, and `RoomLogErasure`
+(actor/entity deletion with a pseudonymous `compliance.erasure` audit event).
+Write-triggered retention accepts a `holds` registry so `roomLogs` stays
+hold-aware; full policies and archive hooks run through the scheduler. See
+[32](32-compliance.md) for the precedence rules, the audit-event shape, the
+GDPR workflow and the interaction with hash chains.
+
+## Layer 5 — query, observe and export the shipped table
+
+The shipped DAO is an audit-viewer backend. `RoomLogFilter` covers time range,
+level, action, entity type, entity id, actor, outcome and correlation id; every
+value is bound as a SQL parameter:
+
+```kotlin
+val page = logDao.query(
+    RoomLogFilter(
+        fromMillis = sinceMillis,              // inclusive
+        toMillis = nowMillis,                  // inclusive
+        levels = setOf(LogLevel.AUDIT),
+        actions = setOf("order.checkout"),
+        outcomes = setOf(Outcome.FAILURE),
+        entityIds = setOf(orderId),
+        correlationIds = setOf(requestId),
+    ),
+    RoomLogPage(limit = 50, offset = 100, order = RoomLogOrder.NEWEST_FIRST),
+)
+```
+
+Empty sets and null timestamps impose no constraint; properties combine with
+`AND`. The order is always `(ts, eventId)`, so rows with equal timestamps page
+deterministically. `RoomLogDao.recent(limit)` remains as a one-shot newest
+page.
+
+Observation, counts and filter dropdowns:
+
+```kotlin
+val rows: Flow<List<RoomLogEntity>> = logDao.observe(page = RoomLogPage(limit = 250))
+val total: Flow<Long> = logDao.observeCount(RoomLogFilter(levels = setOf(LogLevel.ERROR)))
+val actions: List<String> = logDao.distinctValues(RoomLogFacet.ACTION)
+
+val filteredTotal = logDao.count(RoomLogFilter(actorIds = setOf(userId)))
+```
+
+`observe`/`observeCount` are Room-observed flows: they re-emit whenever the
+`ilogger_events` table changes. `distinctValues` accepts a `RoomLogFacet`
+(level, action, entity, entity id, actor, outcome, source, category or
+correlation id). The reference app's audit screen uses exactly these helpers
+([`AuditTrailController`](../app/src/main/java/com/mohamed/dev/ui/ilogger/ui/AuditTrailController.kt)).
+
+### JSONL export and import
+
+```kotlin
+file.bufferedWriter().use { writer ->
+    val count = logDao.exportJsonLines(
+        writer,
+        filter = RoomLogFilter(fromMillis = lastBackupMillis),
+        cipher = payloadCipher,                 // only if payloads are encrypted
+    )
+}
+
+file.bufferedReader().use { reader ->
+    val imported = logDao.importJsonLines(reader, cipher = payloadCipher)
+}
+```
+
+Export writes the stored `payload` verbatim (oldest first), so it is lossless
+and compatible with any `JsonEventCodec` JSONL sink. Full rows are walked in
+offset pages; call `logger.flush()` first and avoid concurrent inserts when
+you need a stable snapshot. Import projects the flat columns from each line,
+keeps the line verbatim as the payload (unknown fields survive), skips blank
+lines and inserts with `REPLACE` — importing the same file twice is safe.
+Malformed lines fail with their line number; batches inserted before the
+failure stay, and re-running after the fix is idempotent.
+
+### Bind timeouts and fail-fast close
+
+By default an unbound `RoomLogTarget` waits for `bind(dao)` indefinitely
+(bounded by the logger's close timeout) and then loses queued events when the
+process ends. Set a timeout when a missing bind should surface as an error:
+
+```kotlin
+val target = RoomLogTarget(bindTimeoutMillis = 10_000)
+val logger = ILogger.create { sink(target) }
+val db = Room.databaseBuilder<AppDatabase>(name = path).build()
+target.bind(db.logDao())
+```
+
+After the timeout, writes fail with `RoomLogTargetUnboundException`; the
+engine's `ErrorMode` decides whether to retry or drop, and the error is
+reported through `onError`. `close()` on a still-unbound target throws the
+same exception, which `logger.close()` reports as a sink failure in its
+`CloseReport` instead of pretending the queued events were persisted. `0`
+keeps the wait-forever default.
+
+### Payload encryption hook
+
+`RoomLogPayloadCipher` encrypts only the `payload` column, leaving ids,
+actions, timestamps and the other indexed/queryable columns as plaintext.
+The library ships `AesGcmRoomPayloadCipher`, which wraps the same
+`AesGcmCipher` used by encrypted file sinks:
+
+```kotlin
+val key = EncryptionKey("2026-10", keyBytes)        // 16, 24 or 32 bytes
+val cipher = AesGcmCipher(key)
+val logs = RoomLogTarget(payloadCipher = AesGcmRoomPayloadCipher(cipher))
+// or
+ILogger.create { roomLogs(db.logDao(), cipher = AesGcmRoomPayloadCipher(cipher)) }
+```
+
+Each payload is stored as `ilogenc1:<keyId>:<base64url(iv‖ciphertext‖tag)>`.
+Rotation works by switching the `EncryptionKeyProvider` to the new key while
+keeping the old key in `keysForReading`; rows written under either key stay
+readable:
+
+```kotlin
+val cipher = AesGcmCipher(
+    keyProvider = EncryptionKeyProvider { currentKey.get() },
+    keysForReading = mapOf("2026-10" to oldKeyBytes, "2027-01" to newKeyBytes),
+)
+```
+
+Reading the payload back — including `exportJsonLines`/`importJsonLines` —
+requires the same keys. A lost key makes existing payloads unreadable, and a
+modified row fails authentication instead of decoding to garbage. For full
+database encryption (including the metadata columns) configure SQLCipher
+through Room's `openHelperFactory` instead; the two options compose, and
+`docs/31-encryption-at-rest.md` covers key handling in depth.
+
+### Schema evolution
+
+`RoomLogSchema.TABLE_VERSION` describes the table contract (currently `1`),
+not the application's database version. The contract is append-only within a
+major library version. To add the table to an existing database, use
+`RoomLogSchema.migration(from, to)`; when `RoomLogEntity` gains columns in a
+future version, bump `TABLE_VERSION` and extend that migration (or write the
+matching `ALTER TABLE`) before bumping the application's database version.
+`CREATE_TABLE_SQL`, `INDEX_SQL` and the migration helper always match Room's
+validation, so a failed migration check usually means the application version
+was bumped without adding the migration.
+
+### Multi-process limits
+
+Room and this DAO assume **one writer process per database file**:
+
+- SQLite serializes writes, but two processes writing the same file can still
+  hit `SQLITE_BUSY`; keep a single logging process or configure a busy timeout
+  and retry policy appropriate to your host.
+- Room's invalidation tracker is per-process. `observe`/`observeCount` in
+  process A do **not** see rows inserted by process B until a later query
+  re-runs; query manually for cross-process freshness.
+- Each process should build its own `AppDatabase`/`RoomLogTarget`; never share
+  a database handle or logger across processes.
+- For audit aggregation across processes or devices, ship events through a
+  remote/spooling sink ([14-sinks.md](14-sinks.md)) and import the resulting
+  JSONL into one writer database if needed.
+
+
 ## Wiring approaches compared
 
 | Approach | Schema owner | Wiring | Simplicity | Recommended when |
@@ -296,7 +477,7 @@ ILogger.create {
 | Store everything, no mapping code | `roomLogs(db.logDao())` |
 | Lifecycle events before `build()` | `RoomLogTarget` + `bind` |
 | Your own columns/entity | `RoomLogSink { ... }` or `onEvents { ... }` |
-| Read/purge the rows | `RoomLogDao.recent` / `purgeBefore` |
+| Read/purge the rows | `query`/`observe`/`count`/`distinctValues`, `exportJsonLines`, `purgeBefore` |
 | Android with Hilt | the `LoggingModule` recipe in [21-android-app-guide.md](21-android-app-guide.md) |
 
 ## Platform notes

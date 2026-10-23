@@ -17,7 +17,9 @@ import io.ilogger.serialization.JsonEventCodec
  * ```
  *
  * The engine's buffered dispatch (the default) already hands the sink real
- * batches, so no dispatch configuration is required. For lifecycle events
+ * batches, so no dispatch configuration is required. Pass [cipher] to encrypt
+ * the payload column while keeping metadata queryable, and [holds] to keep
+ * legal holds effective during write-triggered purges. For lifecycle events
  * emitted while the database is being built, create a [RoomLogTarget] before
  * the logger, pass it with `sink(target)`, and call
  * [RoomLogTarget.bind] after `build()`.
@@ -26,6 +28,13 @@ public fun ILoggerBuilder.roomLogs(
     dao: RoomLogDao,
     codec: EventCodec = JsonEventCodec,
     retention: RoomLogRetention? = null,
+    cipher: RoomLogPayloadCipher? = null,
+    holds: RoomLogLegalHoldRegistry? = null,
 ): Unit = sink(
-    RoomLogTarget(codec = codec, retention = retention).also { target -> target.bind(dao) },
+    RoomLogTarget(
+        codec = codec,
+        retention = retention,
+        payloadCipher = cipher,
+        holds = holds,
+    ).also { target -> target.bind(dao) },
 )

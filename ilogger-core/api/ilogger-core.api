@@ -1,0 +1,1042 @@
+public final class io/ilogger/core/ActionSampler : io/ilogger/core/ContextualSampler {
+	public fun <init> (Ljava/util/Map;Lkotlin/random/Random;)V
+	public synthetic fun <init> (Ljava/util/Map;Lkotlin/random/Random;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+}
+
+public final class io/ilogger/core/Actor {
+	public static final field Companion Lio/ilogger/core/Actor$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Lio/ilogger/core/ActorType;Ljava/lang/String;Ljava/util/Map;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAttributes ()Ljava/util/Map;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getName ()Ljava/lang/String;
+	public final fun getType ()Lio/ilogger/core/ActorType;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/Actor$Companion {
+	public final fun anonymous ()Lio/ilogger/core/Actor;
+	public final fun automation (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun automation$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun custom (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun custom$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun plugin (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun plugin$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun service (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun service$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun system (Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun system$default (Lio/ilogger/core/Actor$Companion;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun user (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun user$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+	public final fun worker (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lio/ilogger/core/Actor;
+	public static synthetic fun worker$default (Lio/ilogger/core/Actor$Companion;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/Actor;
+}
+
+public abstract interface class io/ilogger/core/ActorProvider {
+	public abstract fun currentActor ()Lio/ilogger/core/Actor;
+}
+
+public final class io/ilogger/core/ActorType : java/lang/Enum {
+	public static final field ANONYMOUS Lio/ilogger/core/ActorType;
+	public static final field AUTOMATION Lio/ilogger/core/ActorType;
+	public static final field CUSTOM Lio/ilogger/core/ActorType;
+	public static final field PLUGIN Lio/ilogger/core/ActorType;
+	public static final field SERVICE Lio/ilogger/core/ActorType;
+	public static final field SYSTEM Lio/ilogger/core/ActorType;
+	public static final field USER Lio/ilogger/core/ActorType;
+	public static final field WORKER Lio/ilogger/core/ActorType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/ActorType;
+	public static fun values ()[Lio/ilogger/core/ActorType;
+}
+
+public final class io/ilogger/core/AdaptiveSampler : io/ilogger/core/ContextualSampler {
+	public fun <init> (DLio/ilogger/core/LogClock;Lkotlin/random/Random;JD)V
+	public synthetic fun <init> (DLio/ilogger/core/LogClock;Lkotlin/random/Random;JDILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getMinRate ()D
+	public final fun getTargetEventsPerSecond ()D
+	public final fun getWindowMillis ()J
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+	public final fun stats ()Lio/ilogger/core/SamplingStats;
+}
+
+public final class io/ilogger/core/BindingStats {
+	public fun <init> (ILjava/lang/String;Ljava/lang/String;IIJJ)V
+	public final fun component1 ()I
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()J
+	public final fun component7 ()J
+	public final fun copy (ILjava/lang/String;Ljava/lang/String;IIJJ)Lio/ilogger/core/BindingStats;
+	public static synthetic fun copy$default (Lio/ilogger/core/BindingStats;ILjava/lang/String;Ljava/lang/String;IIJJILjava/lang/Object;)Lio/ilogger/core/BindingStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccepted ()J
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getDelivered ()J
+	public final fun getInFlight ()I
+	public final fun getIndex ()I
+	public final fun getPending ()I
+	public final fun getSink ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/CategorySampler : io/ilogger/core/ContextualSampler {
+	public fun <init> (Ljava/util/Map;DLkotlin/random/Random;)V
+	public synthetic fun <init> (Ljava/util/Map;DLkotlin/random/Random;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+}
+
+public final class io/ilogger/core/CloseReport {
+	public fun <init> (ZJJIILjava/util/Map;Ljava/util/List;)V
+	public final fun component1 ()Z
+	public final fun component2 ()J
+	public final fun component3 ()J
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/util/Map;
+	public final fun component7 ()Ljava/util/List;
+	public final fun copy (ZJJIILjava/util/Map;Ljava/util/List;)Lio/ilogger/core/CloseReport;
+	public static synthetic fun copy$default (Lio/ilogger/core/CloseReport;ZJJIILjava/util/Map;Ljava/util/List;ILjava/lang/Object;)Lio/ilogger/core/CloseReport;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccepted ()J
+	public final fun getDelivered ()J
+	public final fun getDroppedByReason ()Ljava/util/Map;
+	public final fun getInFlight ()I
+	public final fun getPending ()I
+	public final fun getSinkFailures ()Ljava/util/List;
+	public final fun getTimedOut ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/CompositeSampler : io/ilogger/core/ContextualSampler {
+	public fun <init> (Ljava/util/List;)V
+	public fun <init> ([Lio/ilogger/core/ContextualSampler;)V
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+}
+
+public abstract interface class io/ilogger/core/ContextualSampler {
+	public abstract fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+}
+
+public abstract interface class io/ilogger/core/DeadLetterSink : java/lang/AutoCloseable {
+	public static final field Companion Lio/ilogger/core/DeadLetterSink$Companion;
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun write (Lio/ilogger/core/DroppedEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/DeadLetterSink$Companion {
+	public final fun of (Lio/ilogger/core/LogSink;)Lio/ilogger/core/DeadLetterSink;
+}
+
+public final class io/ilogger/core/DeadLetterSink$DefaultImpls {
+	public static fun close (Lio/ilogger/core/DeadLetterSink;)V
+	public static fun flush (Lio/ilogger/core/DeadLetterSink;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/DeliveryStats {
+	public static final field Companion Lio/ilogger/core/DeliveryStats$Companion;
+	public fun <init> (JJIILjava/util/Map;Ljava/util/List;J)V
+	public synthetic fun <init> (JJIILjava/util/Map;Ljava/util/List;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()J
+	public final fun component3 ()I
+	public final fun component4 ()I
+	public final fun component5 ()Ljava/util/Map;
+	public final fun component6 ()Ljava/util/List;
+	public final fun component7 ()J
+	public final fun copy (JJIILjava/util/Map;Ljava/util/List;J)Lio/ilogger/core/DeliveryStats;
+	public static synthetic fun copy$default (Lio/ilogger/core/DeliveryStats;JJIILjava/util/Map;Ljava/util/List;JILjava/lang/Object;)Lio/ilogger/core/DeliveryStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccepted ()J
+	public final fun getBindings ()Ljava/util/List;
+	public final fun getDelivered ()J
+	public final fun getDropped ()J
+	public final fun getDroppedByReason ()Ljava/util/Map;
+	public final fun getInFlight ()I
+	public final fun getPending ()I
+	public final fun getQueueDepth ()I
+	public final fun getTruncated ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/DeliveryStats$Companion {
+	public final fun getEMPTY ()Lio/ilogger/core/DeliveryStats;
+}
+
+public abstract interface class io/ilogger/core/DirectLogSink : io/ilogger/core/LogSink {
+	public abstract fun writeDirect (Lio/ilogger/core/LogEvent;)V
+}
+
+public final class io/ilogger/core/DirectLogSink$DefaultImpls {
+	public static fun close (Lio/ilogger/core/DirectLogSink;)V
+	public static fun flush (Lio/ilogger/core/DirectLogSink;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static fun writeAll (Lio/ilogger/core/DirectLogSink;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/DropReason : java/lang/Enum {
+	public static final field CLOSED Lio/ilogger/core/DropReason;
+	public static final field MISSING_BINDING Lio/ilogger/core/DropReason;
+	public static final field OVERFLOW_NEWEST Lio/ilogger/core/DropReason;
+	public static final field OVERFLOW_OLDEST Lio/ilogger/core/DropReason;
+	public static final field RETRY_EXHAUSTED Lio/ilogger/core/DropReason;
+	public static final field SAMPLED Lio/ilogger/core/DropReason;
+	public static final field SINK_FAILURE Lio/ilogger/core/DropReason;
+	public static final field STRICT_REJECT Lio/ilogger/core/DropReason;
+	public static final field SUPPRESSED Lio/ilogger/core/DropReason;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/DropReason;
+	public static fun values ()[Lio/ilogger/core/DropReason;
+}
+
+public final class io/ilogger/core/DroppedEvent {
+	public fun <init> (Lio/ilogger/core/LogEvent;Lio/ilogger/core/DropReason;Ljava/lang/Throwable;)V
+	public synthetic fun <init> (Lio/ilogger/core/LogEvent;Lio/ilogger/core/DropReason;Ljava/lang/Throwable;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lio/ilogger/core/LogEvent;
+	public final fun component2 ()Lio/ilogger/core/DropReason;
+	public final fun component3 ()Ljava/lang/Throwable;
+	public final fun copy (Lio/ilogger/core/LogEvent;Lio/ilogger/core/DropReason;Ljava/lang/Throwable;)Lio/ilogger/core/DroppedEvent;
+	public static synthetic fun copy$default (Lio/ilogger/core/DroppedEvent;Lio/ilogger/core/LogEvent;Lio/ilogger/core/DropReason;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/ilogger/core/DroppedEvent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Ljava/lang/Throwable;
+	public final fun getEvent ()Lio/ilogger/core/LogEvent;
+	public final fun getReason ()Lio/ilogger/core/DropReason;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/ErrorMode : java/lang/Enum {
+	public static final field DROP Lio/ilogger/core/ErrorMode;
+	public static final field PROPAGATE Lio/ilogger/core/ErrorMode;
+	public static final field RETRY Lio/ilogger/core/ErrorMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/ErrorMode;
+	public static fun values ()[Lio/ilogger/core/ErrorMode;
+}
+
+public abstract interface class io/ilogger/core/EventIdGenerator {
+	public abstract fun next ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/EventLimits {
+	public static final field Companion Lio/ilogger/core/EventLimits$Companion;
+	public static final field TRUNCATED_KEY Ljava/lang/String;
+	public static final field TRUNCATION_MARKER Ljava/lang/String;
+	public fun <init> ()V
+	public fun <init> (IIIIILio/ilogger/core/LimitAction;)V
+	public synthetic fun <init> (IIIIILio/ilogger/core/LimitAction;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAction ()Lio/ilogger/core/LimitAction;
+	public final fun getMaxActorAttributes ()I
+	public final fun getMaxEntries ()I
+	public final fun getMaxEventBytes ()I
+	public final fun getMaxFailureFrames ()I
+	public final fun getMaxStringLength ()I
+}
+
+public final class io/ilogger/core/EventLimits$Companion {
+}
+
+public final class io/ilogger/core/ExtractorRegistry {
+	public fun <init> ()V
+	public final fun get (Lkotlin/reflect/KClass;Lkotlin/jvm/functions/Function0;)Ljava/lang/Object;
+	public final fun isEmpty ()Z
+	public final fun register (Ljava/lang/Class;Ljava/lang/Object;)V
+	public final fun register (Ljava/lang/Class;Lkotlin/jvm/functions/Function0;)V
+	public final fun register (Lkotlin/reflect/KClass;Ljava/lang/Object;)V
+	public final fun register (Lkotlin/reflect/KClass;Lkotlin/jvm/functions/Function0;)V
+	public final fun require (Lkotlin/reflect/KClass;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/FieldChange {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAfter ()Ljava/lang/Object;
+	public final fun getBefore ()Ljava/lang/Object;
+	public final fun getField ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/FixedClock : io/ilogger/core/LogClock {
+	public fun <init> (J)V
+	public fun nowMillis ()J
+	public final fun set (J)V
+}
+
+public final class io/ilogger/core/FlushReport {
+	public fun <init> (ZJJIILjava/util/Map;)V
+	public final fun component1 ()Z
+	public final fun component2 ()J
+	public final fun component3 ()J
+	public final fun component4 ()I
+	public final fun component5 ()I
+	public final fun component6 ()Ljava/util/Map;
+	public final fun copy (ZJJIILjava/util/Map;)Lio/ilogger/core/FlushReport;
+	public static synthetic fun copy$default (Lio/ilogger/core/FlushReport;ZJJIILjava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/FlushReport;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccepted ()J
+	public final fun getDelivered ()J
+	public final fun getDroppedByReason ()Ljava/util/Map;
+	public final fun getInFlight ()I
+	public final fun getPending ()I
+	public final fun getTimedOut ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/HashChainSink : io/ilogger/core/LogSink {
+	public static final field Companion Lio/ilogger/core/HashChainSink$Companion;
+	public fun <init> (Lio/ilogger/core/LogSink;Lio/ilogger/core/SigningKey;)V
+	public fun <init> (Lio/ilogger/core/LogSink;Lkotlin/jvm/functions/Function0;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/HashChainSink$Companion {
+	public final fun getGENESIS_BYTES ()[B
+	public final fun getGENESIS_STAMP ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/HmacTrailSigner : io/ilogger/core/TrailSigner {
+	public fun <init> ([B)V
+	public fun sign ([B)[B
+	public fun verify ([B[B)Z
+}
+
+public abstract interface class io/ilogger/core/ILogger : java/lang/AutoCloseable {
+	public static final field Companion Lio/ilogger/core/ILogger$Companion;
+	public fun availableCapacity ()I
+	public fun awaitIdle (J)Z
+	public static synthetic fun awaitIdle$default (Lio/ilogger/core/ILogger;JILjava/lang/Object;)Z
+	public abstract fun close ()V
+	public fun closeAndReport ()Lio/ilogger/core/CloseReport;
+	public abstract fun debug (Ljava/lang/String;[Lkotlin/Pair;)V
+	public abstract fun error (Ljava/lang/String;[Lkotlin/Pair;)V
+	public abstract fun flush ()V
+	public fun flush (J)Lio/ilogger/core/FlushReport;
+	public abstract fun getEnabled ()Z
+	public fun getExtractors ()Lio/ilogger/core/ExtractorRegistry;
+	public fun hasSinks ()Z
+	public abstract fun info (Ljava/lang/String;[Lkotlin/Pair;)V
+	public fun isBacklogged ()Z
+	public abstract fun isEnabled (Lio/ilogger/annotations/LogLevel;)Z
+	public fun isLoggable (Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;)Z
+	public static synthetic fun isLoggable$default (Lio/ilogger/core/ILogger;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Z
+	public fun record (Lio/ilogger/core/LogEventDraft;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun record (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DLkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun record$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public fun recordBlocking (Lio/ilogger/core/LogEventDraft;J)Z
+	public fun recordBlocking (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DJ)Z
+	public static synthetic fun recordBlocking$default (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;JILjava/lang/Object;)Z
+	public static synthetic fun recordBlocking$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DJILjava/lang/Object;)Z
+	public fun recordNow (Lio/ilogger/core/LogEventDraft;)V
+	public abstract fun recordNow (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)V
+	public static synthetic fun recordNow$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)V
+	public fun recordOrDrop (Lio/ilogger/core/LogEventDraft;)V
+	public fun recordOrDrop (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)V
+	public static synthetic fun recordOrDrop$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)V
+	public abstract fun setEnabled (Z)V
+	public fun stats ()Lio/ilogger/core/DeliveryStats;
+	public abstract fun trace (Ljava/lang/String;[Lkotlin/Pair;)V
+	public fun tryRecord (Lio/ilogger/core/LogEventDraft;)Z
+	public fun tryRecord (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)Z
+	public static synthetic fun tryRecord$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)Z
+	public abstract fun warn (Ljava/lang/String;[Lkotlin/Pair;)V
+}
+
+public final class io/ilogger/core/ILogger$Companion {
+	public final fun configure (Lkotlin/jvm/functions/Function1;)Lio/ilogger/core/ILogger;
+	public final fun create (Lkotlin/jvm/functions/Function1;)Lio/ilogger/core/ILogger;
+	public final fun getDefault ()Lio/ilogger/core/ILogger;
+	public final fun getDisabled ()Lio/ilogger/core/ILogger;
+	public final fun setDefault (Lio/ilogger/core/ILogger;)V
+}
+
+public final class io/ilogger/core/ILogger$DefaultImpls {
+	public static fun availableCapacity (Lio/ilogger/core/ILogger;)I
+	public static fun awaitIdle (Lio/ilogger/core/ILogger;J)Z
+	public static synthetic fun awaitIdle$default (Lio/ilogger/core/ILogger;JILjava/lang/Object;)Z
+	public static fun closeAndReport (Lio/ilogger/core/ILogger;)Lio/ilogger/core/CloseReport;
+	public static fun flush (Lio/ilogger/core/ILogger;J)Lio/ilogger/core/FlushReport;
+	public static fun getExtractors (Lio/ilogger/core/ILogger;)Lio/ilogger/core/ExtractorRegistry;
+	public static fun hasSinks (Lio/ilogger/core/ILogger;)Z
+	public static fun isBacklogged (Lio/ilogger/core/ILogger;)Z
+	public static fun isLoggable (Lio/ilogger/core/ILogger;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;)Z
+	public static synthetic fun isLoggable$default (Lio/ilogger/core/ILogger;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Z
+	public static fun record (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static synthetic fun record$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DLkotlin/coroutines/Continuation;ILjava/lang/Object;)Ljava/lang/Object;
+	public static fun recordBlocking (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;J)Z
+	public static fun recordBlocking (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DJ)Z
+	public static synthetic fun recordBlocking$default (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;JILjava/lang/Object;)Z
+	public static synthetic fun recordBlocking$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DJILjava/lang/Object;)Z
+	public static fun recordNow (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;)V
+	public static synthetic fun recordNow$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)V
+	public static fun recordOrDrop (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;)V
+	public static fun recordOrDrop (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)V
+	public static synthetic fun recordOrDrop$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)V
+	public static fun stats (Lio/ilogger/core/ILogger;)Lio/ilogger/core/DeliveryStats;
+	public static fun tryRecord (Lio/ilogger/core/ILogger;Lio/ilogger/core/LogEventDraft;)Z
+	public static fun tryRecord (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)Z
+	public static synthetic fun tryRecord$default (Lio/ilogger/core/ILogger;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)Z
+}
+
+public final class io/ilogger/core/ILoggerBuilder {
+	public fun <init> ()V
+	public final fun deadLetter (Lio/ilogger/core/DeadLetterSink;)V
+	public final fun deadLetter (Lio/ilogger/core/LogSink;)V
+	public final fun enricher (Lio/ilogger/core/LogEventEnricher;)V
+	public final fun extractor (Ljava/lang/Class;Ljava/lang/Object;)V
+	public final fun extractor (Ljava/lang/Class;Lkotlin/jvm/functions/Function0;)V
+	public final fun extractor (Lkotlin/reflect/KClass;Ljava/lang/Object;)V
+	public final fun extractor (Lkotlin/reflect/KClass;Lkotlin/jvm/functions/Function0;)V
+	public final fun getActorProvider ()Lio/ilogger/core/ActorProvider;
+	public final fun getAuditSampling ()Z
+	public final fun getBatchSize ()I
+	public final fun getBlockTimeoutMillis ()J
+	public final fun getBufferSize ()I
+	public final fun getClock ()Lio/ilogger/core/LogClock;
+	public final fun getCloseTimeoutMillis ()J
+	public final fun getContextualSampler ()Lio/ilogger/core/ContextualSampler;
+	public final fun getDispatch ()Lio/ilogger/annotations/DispatchMode;
+	public final fun getEnabled ()Z
+	public final fun getFlushIntervalMillis ()J
+	public final fun getIdGenerator ()Lio/ilogger/core/EventIdGenerator;
+	public final fun getLimits ()Lio/ilogger/core/EventLimits;
+	public final fun getMinLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getOnDispatchError ()Lkotlin/jvm/functions/Function3;
+	public final fun getOnDrop ()Lkotlin/jvm/functions/Function1;
+	public final fun getOverflow ()Lio/ilogger/core/OverflowPolicy;
+	public final fun getRedaction ()Lio/ilogger/core/RedactionPolicy;
+	public final fun getRetryBaseBackoffMillis ()J
+	public final fun getRetryMaxAttempts ()I
+	public final fun getSampler ()Lio/ilogger/core/LogSampler;
+	public final fun getSinkConcurrency ()I
+	public final fun getStrictMaxEntries ()I
+	public final fun getStrictMaxEventBytes ()I
+	public final fun getStrictMaxStringLength ()I
+	public final fun getStrictMode ()Lio/ilogger/core/StrictMode;
+	public final fun getWorkerDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public final fun onErrorMode (Lio/ilogger/annotations/LogLevel;Lio/ilogger/core/ErrorMode;)V
+	public final fun sampling (Lio/ilogger/core/ContextualSampler;)V
+	public final fun sampling ([Lkotlin/Pair;)V
+	public final fun setActorProvider (Lio/ilogger/core/ActorProvider;)V
+	public final fun setAuditSampling (Z)V
+	public final fun setBatchSize (I)V
+	public final fun setBlockTimeoutMillis (J)V
+	public final fun setBufferSize (I)V
+	public final fun setClock (Lio/ilogger/core/LogClock;)V
+	public final fun setCloseTimeoutMillis (J)V
+	public final fun setContextualSampler (Lio/ilogger/core/ContextualSampler;)V
+	public final fun setDispatch (Lio/ilogger/annotations/DispatchMode;)V
+	public final fun setEnabled (Z)V
+	public final fun setFlushIntervalMillis (J)V
+	public final fun setIdGenerator (Lio/ilogger/core/EventIdGenerator;)V
+	public final fun setLimits (Lio/ilogger/core/EventLimits;)V
+	public final fun setMinLevel (Lio/ilogger/annotations/LogLevel;)V
+	public final fun setOnDispatchError (Lkotlin/jvm/functions/Function3;)V
+	public final fun setOnDrop (Lkotlin/jvm/functions/Function1;)V
+	public final fun setOverflow (Lio/ilogger/core/OverflowPolicy;)V
+	public final fun setRedaction (Lio/ilogger/core/RedactionPolicy;)V
+	public final fun setRetryBaseBackoffMillis (J)V
+	public final fun setRetryMaxAttempts (I)V
+	public final fun setSampler (Lio/ilogger/core/LogSampler;)V
+	public final fun setSinkConcurrency (I)V
+	public final fun setStrictMaxEntries (I)V
+	public final fun setStrictMaxEventBytes (I)V
+	public final fun setStrictMaxStringLength (I)V
+	public final fun setStrictMode (Lio/ilogger/core/StrictMode;)V
+	public final fun setWorkerDispatcher (Lkotlinx/coroutines/CoroutineDispatcher;)V
+	public final fun sink (Lio/ilogger/core/LogSink;Ljava/lang/String;)V
+	public static synthetic fun sink$default (Lio/ilogger/core/ILoggerBuilder;Lio/ilogger/core/LogSink;Ljava/lang/String;ILjava/lang/Object;)V
+	public final fun valueAdapter (Ljava/lang/Class;Lio/ilogger/core/ValueAdapter;)V
+	public final fun valueAdapter (Lkotlin/reflect/KClass;Lio/ilogger/core/ValueAdapter;)V
+}
+
+public final class io/ilogger/core/ILoggerConfig {
+	public synthetic fun <init> (ZLio/ilogger/annotations/LogLevel;Lio/ilogger/core/LogClock;Lio/ilogger/core/EventIdGenerator;Lio/ilogger/core/ActorProvider;Ljava/util/List;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/core/OverflowPolicy;IIJLkotlinx/coroutines/CoroutineDispatcher;JLio/ilogger/core/LogSampler;Lio/ilogger/core/ContextualSampler;ZLio/ilogger/core/StrictMode;IIILjava/util/Map;IJLkotlin/jvm/functions/Function3;IJLio/ilogger/core/DeadLetterSink;Lio/ilogger/core/ValueAdapterRegistry;Lio/ilogger/core/ExtractorRegistry;Lkotlin/jvm/functions/Function1;Lio/ilogger/core/EventLimits;Lio/ilogger/core/RedactionPolicy;Ljava/util/List;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getActorProvider ()Lio/ilogger/core/ActorProvider;
+	public final fun getAuditSampling ()Z
+	public final fun getBatchSize ()I
+	public final fun getBindings ()Ljava/util/List;
+	public final fun getBlockTimeoutMillis ()J
+	public final fun getBufferSize ()I
+	public final fun getClock ()Lio/ilogger/core/LogClock;
+	public final fun getCloseTimeoutMillis ()J
+	public final fun getContextualSampler ()Lio/ilogger/core/ContextualSampler;
+	public final fun getDeadLetterSink ()Lio/ilogger/core/DeadLetterSink;
+	public final fun getDispatch ()Lio/ilogger/annotations/DispatchMode;
+	public final fun getEnabled ()Z
+	public final fun getEnrichers ()Ljava/util/List;
+	public final fun getErrorModes ()Ljava/util/Map;
+	public final fun getExtractors ()Lio/ilogger/core/ExtractorRegistry;
+	public final fun getFlushIntervalMillis ()J
+	public final fun getIdGenerator ()Lio/ilogger/core/EventIdGenerator;
+	public final fun getLimits ()Lio/ilogger/core/EventLimits;
+	public final fun getMinLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getOnDispatchError ()Lkotlin/jvm/functions/Function3;
+	public final fun getOnDrop ()Lkotlin/jvm/functions/Function1;
+	public final fun getOverflow ()Lio/ilogger/core/OverflowPolicy;
+	public final fun getRedaction ()Lio/ilogger/core/RedactionPolicy;
+	public final fun getRetryBaseBackoffMillis ()J
+	public final fun getRetryMaxAttempts ()I
+	public final fun getSampler ()Lio/ilogger/core/LogSampler;
+	public final fun getSinkConcurrency ()I
+	public final fun getStrictMaxEntries ()I
+	public final fun getStrictMaxEventBytes ()I
+	public final fun getStrictMaxStringLength ()I
+	public final fun getStrictMode ()Lio/ilogger/core/StrictMode;
+	public final fun getValueAdapters ()Lio/ilogger/core/ValueAdapterRegistry;
+	public final fun getWorkerDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+}
+
+public final class io/ilogger/core/KeyRedactionRule : io/ilogger/core/RedactionRule {
+	public fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lio/ilogger/core/KeyRedactionRule$KeyMatch;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Set;Ljava/lang/String;Lio/ilogger/core/KeyRedactionRule$KeyMatch;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getName ()Ljava/lang/String;
+	public fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/KeyRedactionRule$KeyMatch : java/lang/Enum {
+	public static final field CONTAINS Lio/ilogger/core/KeyRedactionRule$KeyMatch;
+	public static final field EQUALS Lio/ilogger/core/KeyRedactionRule$KeyMatch;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/KeyRedactionRule$KeyMatch;
+	public static fun values ()[Lio/ilogger/core/KeyRedactionRule$KeyMatch;
+}
+
+public final class io/ilogger/core/LevelSampler : io/ilogger/core/LogSampler {
+	public fun <init> (Ljava/util/Map;Lkotlin/random/Random;)V
+	public synthetic fun <init> (Ljava/util/Map;Lkotlin/random/Random;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> ([Lkotlin/Pair;Lkotlin/random/Random;)V
+	public synthetic fun <init> ([Lkotlin/Pair;Lkotlin/random/Random;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun shouldSample (Lio/ilogger/annotations/LogLevel;Ljava/lang/String;)Z
+}
+
+public final class io/ilogger/core/LimitAction : java/lang/Enum {
+	public static final field REJECT Lio/ilogger/core/LimitAction;
+	public static final field TRUNCATE Lio/ilogger/core/LimitAction;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/LimitAction;
+	public static fun values ()[Lio/ilogger/core/LimitAction;
+}
+
+public abstract interface class io/ilogger/core/LogClock {
+	public abstract fun nowMillis ()J
+}
+
+public final class io/ilogger/core/LogContext : kotlin/coroutines/AbstractCoroutineContextElement {
+	public static final field Key Lio/ilogger/core/LogContext$Key;
+	public fun <init> ()V
+	public fun <init> (Lio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/Set;)V
+	public synthetic fun <init> (Lio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/Set;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActor ()Lio/ilogger/core/Actor;
+	public final fun getAttributes ()Ljava/util/Map;
+	public final fun getCausationId ()Ljava/lang/String;
+	public final fun getCorrelationId ()Ljava/lang/String;
+	public final fun getSuppressSources ()Ljava/util/Set;
+	public fun hashCode ()I
+	public final fun plus (Lio/ilogger/core/LogContext;)Lio/ilogger/core/LogContext;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/LogContext$Key : kotlin/coroutines/CoroutineContext$Key {
+}
+
+public final class io/ilogger/core/LogContextKt {
+	public static final fun withActor (Lio/ilogger/core/Actor;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun withCausation (Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun withContextAttributes ([Lkotlin/Pair;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun withCorrelation (Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static final fun withLogContext (Lio/ilogger/core/LogContext;Lkotlin/jvm/functions/Function2;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/LogContexts {
+	public static final field INSTANCE Lio/ilogger/core/LogContexts;
+	public final fun current (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun currentThread ()Lio/ilogger/core/LogContext;
+	public final fun getThreadLocal ()Ljava/lang/ThreadLocal;
+	public final fun onCurrentThread (Lio/ilogger/core/LogContext;Lkotlin/jvm/functions/Function0;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/LogEvent {
+	public fun <init> (Ljava/lang/String;JLio/ilogger/annotations/LogLevel;Ljava/lang/String;ILio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Lio/ilogger/core/LogFailure;)V
+	public synthetic fun <init> (Ljava/lang/String;JLio/ilogger/annotations/LogLevel;Ljava/lang/String;ILio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Lio/ilogger/core/LogFailure;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun copy (Ljava/lang/String;JLio/ilogger/annotations/LogLevel;Ljava/lang/String;ILio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Lio/ilogger/core/LogFailure;)Lio/ilogger/core/LogEvent;
+	public static synthetic fun copy$default (Lio/ilogger/core/LogEvent;Ljava/lang/String;JLio/ilogger/annotations/LogLevel;Ljava/lang/String;ILio/ilogger/core/Actor;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Lio/ilogger/core/LogFailure;ILjava/lang/Object;)Lio/ilogger/core/LogEvent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAction ()Ljava/lang/String;
+	public final fun getActionVersion ()I
+	public final fun getActor ()Lio/ilogger/core/Actor;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getCausationId ()Ljava/lang/String;
+	public final fun getChanges ()Ljava/util/List;
+	public final fun getCorrelationId ()Ljava/lang/String;
+	public final fun getEntity ()Ljava/lang/String;
+	public final fun getEntityId ()Ljava/lang/String;
+	public final fun getFailure ()Lio/ilogger/core/LogFailure;
+	public final fun getId ()Ljava/lang/String;
+	public final fun getLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getMetadata ()Ljava/util/Map;
+	public final fun getOutcome ()Lio/ilogger/core/Outcome;
+	public final fun getSchemaId ()Ljava/lang/String;
+	public final fun getSource ()Ljava/lang/String;
+	public final fun getTimestampMillis ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/LogEventDraft {
+	public fun <init> (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)V
+	public synthetic fun <init> (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component10 ()Ljava/lang/String;
+	public final fun component11 ()Ljava/lang/String;
+	public final fun component12 ()I
+	public final fun component13 ()Lio/ilogger/annotations/DispatchMode;
+	public final fun component14 ()D
+	public final fun component2 ()Lio/ilogger/annotations/LogLevel;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Lio/ilogger/core/Actor;
+	public final fun component6 ()Lio/ilogger/core/Outcome;
+	public final fun component7 ()Ljava/lang/Throwable;
+	public final fun component8 ()Ljava/util/Map;
+	public final fun component9 ()Ljava/util/List;
+	public final fun copy (Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;D)Lio/ilogger/core/LogEventDraft;
+	public static synthetic fun copy$default (Lio/ilogger/core/LogEventDraft;Ljava/lang/String;Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Actor;Lio/ilogger/core/Outcome;Ljava/lang/Throwable;Ljava/util/Map;Ljava/util/List;Ljava/lang/String;Ljava/lang/String;ILio/ilogger/annotations/DispatchMode;DILjava/lang/Object;)Lio/ilogger/core/LogEventDraft;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAction ()Ljava/lang/String;
+	public final fun getActionVersion ()I
+	public final fun getActor ()Lio/ilogger/core/Actor;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getChanges ()Ljava/util/List;
+	public final fun getDispatch ()Lio/ilogger/annotations/DispatchMode;
+	public final fun getEntity ()Ljava/lang/String;
+	public final fun getEntityId ()Ljava/lang/String;
+	public final fun getFailure ()Ljava/lang/Throwable;
+	public final fun getLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getMetadata ()Ljava/util/Map;
+	public final fun getOutcome ()Lio/ilogger/core/Outcome;
+	public final fun getSampling ()D
+	public final fun getSource ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/core/LogEventEnricher {
+	public abstract fun enrich (Lio/ilogger/core/LogContext;)Ljava/util/Map;
+}
+
+public final class io/ilogger/core/LogFailure {
+	public static final field Companion Lio/ilogger/core/LogFailure$Companion;
+	public static final field DEFAULT_STACK_FRAMES I
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Z)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/List;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCancelled ()Z
+	public final fun getErrorType ()Ljava/lang/String;
+	public final fun getMessage ()Ljava/lang/String;
+	public final fun getRootCauseType ()Ljava/lang/String;
+	public final fun getStackSummary ()Ljava/util/List;
+	public final fun isCancellation ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/LogFailure$Companion {
+	public final fun from (Ljava/lang/Throwable;I)Lio/ilogger/core/LogFailure;
+	public static synthetic fun from$default (Lio/ilogger/core/LogFailure$Companion;Ljava/lang/Throwable;IILjava/lang/Object;)Lio/ilogger/core/LogFailure;
+}
+
+public final class io/ilogger/core/LogMasking {
+	public static final field HASH_LENGTH I
+	public static final field INSTANCE Lio/ilogger/core/LogMasking;
+	public static final field MASK Ljava/lang/String;
+	public final fun hash (Ljava/lang/Object;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/LogSafeValue {
+	public static final field Companion Lio/ilogger/core/LogSafeValue$Companion;
+	public synthetic fun <init> (Ljava/lang/Object;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getValue ()Ljava/lang/Object;
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/LogSafeValue$Companion {
+	public final fun of (Ljava/lang/Object;)Lio/ilogger/core/LogSafeValue;
+}
+
+public final class io/ilogger/core/LogSafeValues {
+	public static final field INSTANCE Lio/ilogger/core/LogSafeValues;
+	public final fun isLogSafe (Ljava/lang/Object;)Z
+}
+
+public abstract interface class io/ilogger/core/LogSampler {
+	public abstract fun shouldSample (Lio/ilogger/annotations/LogLevel;Ljava/lang/String;)Z
+}
+
+public abstract interface class io/ilogger/core/LogSink : java/lang/AutoCloseable {
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/LogSink$DefaultImpls {
+	public static fun close (Lio/ilogger/core/LogSink;)V
+	public static fun flush (Lio/ilogger/core/LogSink;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public static fun writeAll (Lio/ilogger/core/LogSink;Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/LogTriggerKt {
+	public static final fun onEvent (Lio/ilogger/core/ILoggerBuilder;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;)V
+	public static synthetic fun onEvent$default (Lio/ilogger/core/ILoggerBuilder;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)V
+	public static final fun onEvents (Lio/ilogger/core/ILoggerBuilder;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;)V
+	public static synthetic fun onEvents$default (Lio/ilogger/core/ILoggerBuilder;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;ILjava/lang/Object;)V
+}
+
+public abstract interface class io/ilogger/core/LogValueExtractor {
+	public abstract fun extract (Ljava/lang/Object;)Ljava/lang/Object;
+	public fun validated ()Lio/ilogger/core/LogValueExtractor;
+}
+
+public final class io/ilogger/core/LogValueExtractor$DefaultImpls {
+	public static fun validated (Lio/ilogger/core/LogValueExtractor;)Lio/ilogger/core/LogValueExtractor;
+}
+
+public final class io/ilogger/core/Outcome : java/lang/Enum {
+	public static final field FAILURE Lio/ilogger/core/Outcome;
+	public static final field START Lio/ilogger/core/Outcome;
+	public static final field SUCCESS Lio/ilogger/core/Outcome;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/Outcome;
+	public static fun values ()[Lio/ilogger/core/Outcome;
+}
+
+public final class io/ilogger/core/OverflowPolicy : java/lang/Enum {
+	public static final field BLOCK Lio/ilogger/core/OverflowPolicy;
+	public static final field DROP_NEWEST Lio/ilogger/core/OverflowPolicy;
+	public static final field DROP_OLDEST Lio/ilogger/core/OverflowPolicy;
+	public static final field FAIL Lio/ilogger/core/OverflowPolicy;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/OverflowPolicy;
+	public static fun values ()[Lio/ilogger/core/OverflowPolicy;
+}
+
+public final class io/ilogger/core/RateLimitSampler : io/ilogger/core/ContextualSampler {
+	public fun <init> (DLkotlin/random/Random;)V
+	public synthetic fun <init> (DLkotlin/random/Random;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+}
+
+public final class io/ilogger/core/RateLimitScope : java/lang/Enum {
+	public static final field ACTION Lio/ilogger/core/RateLimitScope;
+	public static final field ACTOR Lio/ilogger/core/RateLimitScope;
+	public static final field CATEGORY Lio/ilogger/core/RateLimitScope;
+	public static final field GLOBAL Lio/ilogger/core/RateLimitScope;
+	public static final field LEVEL Lio/ilogger/core/RateLimitScope;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/RateLimitScope;
+	public static fun values ()[Lio/ilogger/core/RateLimitScope;
+}
+
+public final class io/ilogger/core/RedactionPolicy {
+	public static final field Companion Lio/ilogger/core/RedactionPolicy$Companion;
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/Map;ZLkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCategoryRules ()Ljava/util/Map;
+	public final fun getRules ()Ljava/util/List;
+	public final fun getStrict ()Z
+}
+
+public final class io/ilogger/core/RedactionPolicy$Builder {
+	public fun <init> ()V
+	public final fun build ()Lio/ilogger/core/RedactionPolicy;
+	public final fun getStrict ()Z
+	public final fun rule (Lio/ilogger/core/RedactionRule;)Lio/ilogger/core/RedactionPolicy$Builder;
+	public final fun rule (Ljava/lang/String;Lio/ilogger/core/RedactionRule;)Lio/ilogger/core/RedactionPolicy$Builder;
+	public final fun setStrict (Z)V
+}
+
+public final class io/ilogger/core/RedactionPolicy$Companion {
+	public final fun build (Lkotlin/jvm/functions/Function1;)Lio/ilogger/core/RedactionPolicy;
+}
+
+public abstract interface class io/ilogger/core/RedactionRule {
+	public abstract fun getName ()Ljava/lang/String;
+	public abstract fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/RedactionRules {
+	public static final field DEFAULT_MASK Ljava/lang/String;
+	public static final field INSTANCE Lio/ilogger/core/RedactionRules;
+	public final fun bearer (Ljava/lang/String;)Lio/ilogger/core/RedactionRule;
+	public static synthetic fun bearer$default (Lio/ilogger/core/RedactionRules;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/RedactionRule;
+	public final fun card (Ljava/lang/String;)Lio/ilogger/core/RedactionRule;
+	public static synthetic fun card$default (Lio/ilogger/core/RedactionRules;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/RedactionRule;
+	public final fun email (Ljava/lang/String;)Lio/ilogger/core/RegexRedactionRule;
+	public static synthetic fun email$default (Lio/ilogger/core/RedactionRules;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/RegexRedactionRule;
+	public final fun getSECRET_KEYS ()Ljava/util/Set;
+	public final fun keys ([Ljava/lang/String;Ljava/lang/String;)Lio/ilogger/core/KeyRedactionRule;
+	public static synthetic fun keys$default (Lio/ilogger/core/RedactionRules;[Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/KeyRedactionRule;
+	public final fun phone (Ljava/lang/String;)Lio/ilogger/core/RegexRedactionRule;
+	public static synthetic fun phone$default (Lio/ilogger/core/RedactionRules;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/RegexRedactionRule;
+	public final fun secretKeys (Ljava/lang/String;)Lio/ilogger/core/KeyRedactionRule;
+	public static synthetic fun secretKeys$default (Lio/ilogger/core/RedactionRules;Ljava/lang/String;ILjava/lang/Object;)Lio/ilogger/core/KeyRedactionRule;
+}
+
+public final class io/ilogger/core/RegexRedactionRule : io/ilogger/core/RedactionRule {
+	public fun <init> (Ljava/lang/String;Lkotlin/text/Regex;Ljava/lang/String;)V
+	public fun getName ()Ljava/lang/String;
+	public fun redact (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/SamplingContext {
+	public fun <init> (Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Ljava/util/Map;Ljava/lang/String;Lio/ilogger/core/Actor;)V
+	public synthetic fun <init> (Lio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Lio/ilogger/core/Outcome;Ljava/util/Map;Ljava/lang/String;Lio/ilogger/core/Actor;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAction ()Ljava/lang/String;
+	public final fun getActor ()Lio/ilogger/core/Actor;
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getLevel ()Lio/ilogger/annotations/LogLevel;
+	public final fun getMetadata ()Ljava/util/Map;
+	public final fun getOperationKey ()Ljava/lang/String;
+	public final fun getOutcome ()Lio/ilogger/core/Outcome;
+}
+
+public final class io/ilogger/core/SamplingKt {
+	public static final fun asContextualSampler (Lio/ilogger/core/LogSampler;)Lio/ilogger/core/ContextualSampler;
+}
+
+public final class io/ilogger/core/SamplingStats {
+	public fun <init> (JJDDI)V
+	public synthetic fun <init> (JJDDIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()J
+	public final fun component2 ()J
+	public final fun component3 ()D
+	public final fun component4 ()D
+	public final fun component5 ()I
+	public final fun copy (JJDDI)Lio/ilogger/core/SamplingStats;
+	public static synthetic fun copy$default (Lio/ilogger/core/SamplingStats;JJDDIILjava/lang/Object;)Lio/ilogger/core/SamplingStats;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getBuckets ()I
+	public final fun getConsidered ()J
+	public final fun getCurrentRate ()D
+	public final fun getObservedPerSecond ()D
+	public final fun getSampled ()J
+	public final fun getSkipped ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/SigningKey {
+	public fun <init> (Ljava/lang/String;Lio/ilogger/core/TrailSigner;)V
+	public final fun getId ()Ljava/lang/String;
+	public final fun getSigner ()Lio/ilogger/core/TrailSigner;
+}
+
+public final class io/ilogger/core/SinkBinding {
+	public fun <init> (Lio/ilogger/core/LogSink;Ljava/lang/String;)V
+	public synthetic fun <init> (Lio/ilogger/core/LogSink;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getCategory ()Ljava/lang/String;
+	public final fun getSink ()Lio/ilogger/core/LogSink;
+}
+
+public final class io/ilogger/core/SinkFailure {
+	public fun <init> (Ljava/lang/String;Ljava/lang/Throwable;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/Throwable;
+	public final fun copy (Ljava/lang/String;Ljava/lang/Throwable;)Lio/ilogger/core/SinkFailure;
+	public static synthetic fun copy$default (Lio/ilogger/core/SinkFailure;Ljava/lang/String;Ljava/lang/Throwable;ILjava/lang/Object;)Lio/ilogger/core/SinkFailure;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getError ()Ljava/lang/Throwable;
+	public final fun getSink ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class io/ilogger/core/StreamAdaptersKt {
+	public static final fun loggedChannel (Lkotlinx/coroutines/channels/ReceiveChannel;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;)Lkotlinx/coroutines/flow/Flow;
+	public static synthetic fun loggedChannel$default (Lkotlinx/coroutines/channels/ReceiveChannel;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;ILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public static final fun loggedFlow (Lkotlinx/coroutines/flow/Flow;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;)Lkotlinx/coroutines/flow/Flow;
+	public static synthetic fun loggedFlow$default (Lkotlinx/coroutines/flow/Flow;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;ILjava/lang/Object;)Lkotlinx/coroutines/flow/Flow;
+	public static final fun loggedSequence (Lkotlin/sequences/Sequence;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;)Lkotlin/sequences/Sequence;
+	public static synthetic fun loggedSequence$default (Lkotlin/sequences/Sequence;Lio/ilogger/core/ILogger;Ljava/lang/String;ILio/ilogger/annotations/LogLevel;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lio/ilogger/annotations/DispatchMode;Lio/ilogger/annotations/OnCancellation;ILjava/lang/Object;)Lkotlin/sequences/Sequence;
+}
+
+public final class io/ilogger/core/StrictMode : java/lang/Enum {
+	public static final field OFF Lio/ilogger/core/StrictMode;
+	public static final field THROW Lio/ilogger/core/StrictMode;
+	public static final field WARN Lio/ilogger/core/StrictMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/StrictMode;
+	public static fun values ()[Lio/ilogger/core/StrictMode;
+}
+
+public final class io/ilogger/core/SystemClock : io/ilogger/core/LogClock {
+	public static final field INSTANCE Lio/ilogger/core/SystemClock;
+	public fun nowMillis ()J
+}
+
+public final class io/ilogger/core/TokenBucketRateLimiter : io/ilogger/core/ContextualSampler {
+	public fun <init> (DILio/ilogger/core/RateLimitScope;Lio/ilogger/core/LogClock;I)V
+	public synthetic fun <init> (DILio/ilogger/core/RateLimitScope;Lio/ilogger/core/LogClock;IILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getBurst ()I
+	public final fun getMaxBuckets ()I
+	public final fun getPermitsPerSecond ()D
+	public final fun getScope ()Lio/ilogger/core/RateLimitScope;
+	public fun shouldSample (Lio/ilogger/core/SamplingContext;)Z
+	public final fun stats ()Lio/ilogger/core/SamplingStats;
+}
+
+public final class io/ilogger/core/TrailKeys {
+	public static final field HASH Ljava/lang/String;
+	public static final field INSTANCE Lio/ilogger/core/TrailKeys;
+	public static final field KEY_ID Ljava/lang/String;
+	public static final field PREV Ljava/lang/String;
+	public static final field RESERVED_PREFIX Ljava/lang/String;
+	public static final field SEQ Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/core/TrailSigner {
+	public abstract fun sign ([B)[B
+	public fun verify ([B[B)Z
+}
+
+public final class io/ilogger/core/TrailSigner$DefaultImpls {
+	public static fun verify (Lio/ilogger/core/TrailSigner;[B[B)Z
+}
+
+public final class io/ilogger/core/TrailVerification {
+	public fun <init> (ZILjava/lang/Integer;Ljava/lang/String;)V
+	public final fun getBrokenAt ()Ljava/lang/Integer;
+	public final fun getChecked ()I
+	public final fun getReason ()Ljava/lang/String;
+	public final fun getValid ()Z
+}
+
+public final class io/ilogger/core/TrailVerifier {
+	public static final field INSTANCE Lio/ilogger/core/TrailVerifier;
+	public final fun verify (Ljava/util/List;Ljava/util/Map;)Lio/ilogger/core/TrailVerification;
+	public static synthetic fun verify$default (Lio/ilogger/core/TrailVerifier;Ljava/util/List;Ljava/util/Map;ILjava/lang/Object;)Lio/ilogger/core/TrailVerification;
+}
+
+public final class io/ilogger/core/TriggerSink : io/ilogger/core/LogSink {
+	public fun <init> (Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;)V
+	public synthetic fun <init> (Lkotlin/jvm/functions/Function2;Lkotlin/jvm/functions/Function2;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/UuidEventIdGenerator : io/ilogger/core/EventIdGenerator {
+	public static final field INSTANCE Lio/ilogger/core/UuidEventIdGenerator;
+	public fun next ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/core/ValueAdapter {
+	public abstract fun render (Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/ValueAdapterRegistry {
+	public fun <init> ()V
+	public final fun isEmpty ()Z
+	public final fun register (Ljava/lang/Class;Lio/ilogger/core/ValueAdapter;)V
+	public final fun register (Lkotlin/reflect/KClass;Lio/ilogger/core/ValueAdapter;)V
+	public final fun render (Ljava/lang/Object;)Ljava/lang/Object;
+}
+
+public final class io/ilogger/core/crypto/AesGcmCipher : io/ilogger/core/crypto/TextCipher {
+	public static final field FORMAT_PREFIX Ljava/lang/String;
+	public static final field IV_BYTES I
+	public static final field TAG_BITS I
+	public static final field TRANSFORM Ljava/lang/String;
+	public fun <init> (Lio/ilogger/core/crypto/EncryptionKey;)V
+	public fun <init> (Lio/ilogger/core/crypto/EncryptionKeyProvider;Ljava/util/Map;)V
+	public synthetic fun <init> (Lio/ilogger/core/crypto/EncryptionKeyProvider;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun decrypt (Ljava/lang/String;)Ljava/lang/String;
+	public fun encrypt (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/crypto/EncryptionKey {
+	public fun <init> (Ljava/lang/String;[B)V
+	public final fun getBytes ()[B
+	public final fun getId ()Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/core/crypto/EncryptionKeyProvider {
+	public abstract fun currentKey ()Lio/ilogger/core/crypto/EncryptionKey;
+}
+
+public abstract interface class io/ilogger/core/crypto/TextCipher {
+	public abstract fun decrypt (Ljava/lang/String;)Ljava/lang/String;
+	public abstract fun encrypt (Ljava/lang/String;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/sink/CompositeLogSink : io/ilogger/core/DirectLogSink {
+	public fun <init> (Ljava/util/List;Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;Lkotlin/jvm/functions/Function3;)V
+	public synthetic fun <init> (Ljava/util/List;Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;Lkotlin/jvm/functions/Function3;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> ([Lio/ilogger/core/LogSink;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeDirect (Lio/ilogger/core/LogEvent;)V
+}
+
+public final class io/ilogger/core/sink/CompositeLogSink$ErrorMode : java/lang/Enum {
+	public static final field BEST_EFFORT Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;
+	public static final field FAIL_FAST Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;
+	public static fun values ()[Lio/ilogger/core/sink/CompositeLogSink$ErrorMode;
+}
+
+public final class io/ilogger/core/sink/ConsoleLogSink : io/ilogger/core/DirectLogSink {
+	public fun <init> (Lio/ilogger/core/sink/EventCodec;)V
+	public synthetic fun <init> (Lio/ilogger/core/sink/EventCodec;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Lio/ilogger/core/sink/EventCodec;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Lio/ilogger/core/sink/EventCodec;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeDirect (Lio/ilogger/core/LogEvent;)V
+}
+
+public final class io/ilogger/core/sink/DefaultTextEventCodec : io/ilogger/core/sink/EventCodec {
+	public static final field INSTANCE Lio/ilogger/core/sink/DefaultTextEventCodec;
+	public fun encode (Lio/ilogger/core/LogEvent;)Ljava/lang/String;
+}
+
+public abstract interface class io/ilogger/core/sink/EventCodec {
+	public abstract fun encode (Lio/ilogger/core/LogEvent;)Ljava/lang/String;
+}
+
+public final class io/ilogger/core/sink/TextFileSink : io/ilogger/core/DirectLogSink {
+	public fun <init> (Ljava/nio/file/Path;Lio/ilogger/core/sink/EventCodec;ZZLio/ilogger/core/sink/TextFileSink$Rotation;ZLkotlinx/coroutines/CoroutineDispatcher;Lio/ilogger/core/LogClock;Lio/ilogger/core/crypto/TextCipher;)V
+	public synthetic fun <init> (Ljava/nio/file/Path;Lio/ilogger/core/sink/EventCodec;ZZLio/ilogger/core/sink/TextFileSink$Rotation;ZLkotlinx/coroutines/CoroutineDispatcher;Lio/ilogger/core/LogClock;Lio/ilogger/core/crypto/TextCipher;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun close ()V
+	public fun flush (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lio/ilogger/core/LogEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeAll (Ljava/util/List;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeDirect (Lio/ilogger/core/LogEvent;)V
+}
+
+public final class io/ilogger/core/sink/TextFileSink$Rotation {
+	public fun <init> (JILjava/lang/Long;ZLjava/lang/Long;)V
+	public synthetic fun <init> (JILjava/lang/Long;ZLjava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getGzip ()Z
+	public final fun getMaxAgeMillis ()Ljava/lang/Long;
+	public final fun getMaxBytesPerFile ()J
+	public final fun getMaxFiles ()I
+	public final fun getMaxTotalBytes ()Ljava/lang/Long;
+}
+

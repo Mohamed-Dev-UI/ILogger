@@ -1,7 +1,7 @@
 package io.ilogger.ksp
 
-import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSName
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
@@ -10,48 +10,98 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Modifier
 
 /**
+ * Where an `@Log`-annotated function lives. Drives validation and the codegen
+ * shape: interfaces get delegation proxies, open/abstract classes get subclass
+ * wrappers, top-level functions get adapter wrappers.
+ */
+internal sealed class Container {
+    abstract val decl: KSClassDeclaration?
+
+    class Interface(override val decl: KSClassDeclaration) : Container()
+    class OpenClass(override val decl: KSClassDeclaration) : Container()
+    object TopLevel : Container() {
+        override val decl: KSClassDeclaration? get() = null
+    }
+
+    /** Unsupported container (object, enum, ...): parse reports the generic diagnostic. */
+    object Rejected : Container() {
+        override val decl: KSClassDeclaration? get() = null
+    }
+}
+
+/**
  * Parses and validates one `@Log`-annotated function into [ResolvedOp].
  * Validation failures produce compile diagnostics; the function is skipped
- * ("never guess" — spec §48–49).
+ * ("never guess" — spec §48–49). Every diagnostic carries a stable
+ * [Diagnostic] code so builds can be suppressed with `@Suppress("ILGxxx")`.
  */
 internal class OpParser(
-    private val error: (message: String, symbol: Any) -> Unit,
-    private val warn: (message: String, symbol: Any) -> Unit,
+    private val report: (Diagnostic, String, Any) -> Unit,
+    /** Package prefixes eligible for entity inference (`ilogger.domain-packages`); empty = blacklist-only. */
+    private val domainPackages: Set<String> = emptySet(),
+    /** Warn when an AUDIT operation has no explicit actor (`ilogger.require-actor`). */
+    private val requireActor: Boolean = false,
+    /** Categories with a sink binding (`ilogger.sink-categories`); empty disables the check. */
+    private val sinkCategories: Set<String> = emptySet(),
 ) {
 
-    fun parse(fn: KSFunctionDeclaration, annotation: KSAnnotation, roomKind: String?): ResolvedOp? {
+    private fun error(code: Diagnostic, message: String, symbol: Any) = report(code, message, symbol)
+
+    private fun warn(code: Diagnostic, message: String, symbol: Any) = report(code, message, symbol)
+
+    fun parse(
+        fn: KSFunctionDeclaration,
+        annotation: KSAnnotation,
+        roomKind: String?,
+        container: Container,
+    ): ResolvedOp? {
         // ---- enclosing declaration -------------------------------------------
-        val enclosing = fn.parentDeclaration
-        if (enclosing == null || enclosing !is KSClassDeclaration || enclosing.classKind != ClassKind.INTERFACE) {
+        if (container is Container.Rejected) {
             error(
-                "@Log must be applied to a function of an interface. ILogger generates a delegating " +
-                    "implementation for the entire interface (DAOs, repositories), which is only possible for interfaces.\n" +
-                    "Fix: move '${fn.simpleName.asString()}' into an interface.",
+                Diagnostic.LOG_TARGET,
+                "@Log must be applied to a function of an interface, a member of an open or abstract class, " +
+                    "or a top-level function. ILogger generates a delegating implementation for interfaces and " +
+                    "open/abstract classes, and an adapter wrapper for top-level functions.\n" +
+                    "Fix: move '${fn.simpleName.asString()}' into an interface, an open/abstract class, or the top level.",
                 fn,
             )
             return null
         }
-        if (enclosing.typeParameters.isNotEmpty()) {
-            error(
-                "ilogger-ksp v1 does not support generic interfaces.\n" +
-                    "Fix: remove type parameters or instrument the call site with ILogger.record(...).",
-                fn,
-            )
-            return null
+        val containerDecl = container.decl
+        val containerPackage = containerDecl?.packageName?.asString() ?: fn.packageName.asString()
+        when (container) {
+            is Container.OpenClass -> {
+                if (Modifier.ABSTRACT in fn.modifiers) {
+                    error(
+                        Diagnostic.CLASS_MEMBER_SHAPE,
+                        "@Log cannot instrument the abstract member '${fn.simpleName.asString()}': the generated " +
+                            "subclass wrapper has no implementation to delegate to.\n" +
+                            "Fix: annotate the concrete open member that implements it, or move the operation " +
+                            "into an interface.",
+                        fn,
+                    )
+                    return null
+                }
+                if (Modifier.OPEN !in fn.modifiers) {
+                    error(
+                        Diagnostic.CLASS_MEMBER_SHAPE,
+                        "@Log on class member '${fn.simpleName.asString()}' requires an open member: the subclass " +
+                            "wrapper overrides open members only.\n" +
+                            "Fix: mark the member open, or move the operation into an interface.",
+                        fn,
+                    )
+                    return null
+                }
+            }
+            else -> Unit
         }
-        if (fn.typeParameters.isNotEmpty()) {
+        if (containerPackage.isBlank()) {
+            val subject = if (containerDecl == null) "Top-level functions" else
+                if (container is Container.Interface) "Interfaces" else "Classes"
             error(
-                "@Log cannot instrument generic functions.\n" +
-                    "Fix: use a concrete-signature overload, or log at the call site with ILogger.record(...).",
-                fn,
-            )
-            return null
-        }
-        val interfacePackage = enclosing.packageName.asString()
-        if (interfacePackage.isBlank()) {
-            error(
-                "Interfaces in the default package cannot receive generated wrappers.\n" +
-                    "Fix: move the interface into a named package.",
+                Diagnostic.DEFAULT_PACKAGE,
+                "$subject in the default package cannot receive generated wrappers.\n" +
+                    "Fix: move into a named package.",
                 fn,
             )
             return null
@@ -60,11 +110,16 @@ internal class OpParser(
         // ---- scalar annotation fields ------------------------------------------
         val action = (annotation.arg("action") as? String) ?: ""
         if (action.isBlank()) {
-            error("@Log requires a non-blank action.\nFix: @Log(\"task.created\") or @Log(TaskActions.CREATED).", fn)
+            error(
+                Diagnostic.ACTION_GRAMMAR,
+                "@Log requires a non-blank action.\nFix: @Log(\"task.created\") or @Log(TaskActions.CREATED).",
+                fn,
+            )
             return null
         }
-        if (!action.matches(ACTION_REGEX)) {
+        if (!Ks.ACTION_REGEX.matches(action)) {
             error(
+                Diagnostic.ACTION_GRAMMAR,
                 "Invalid action '$action'. Actions must be dotted canonical codes such as 'task.created'.\n" +
                     "Fix: use '<domain>.<event>[.<variant>]' with no spaces, quotes or special characters.",
                 fn,
@@ -73,42 +128,131 @@ internal class OpParser(
         }
         val actionVersion = (annotation.arg("schemaVersion") as? Int) ?: 1
         if (actionVersion < 1) {
-            error("@Log(schemaVersion = $actionVersion) is invalid: schemaVersion must be >= 1.", fn)
+            error(
+                Diagnostic.SCHEMA_VERSION,
+                "@Log(schemaVersion = $actionVersion) is invalid: schemaVersion must be >= 1.\n" +
+                    "Fix: use schemaVersion = 1 for the first shape and increment only when it changes.",
+                fn,
+            )
             return null
         }
-        val level = annotation.arg("level")?.let { enumConstantName(it) } ?: "AUDIT"
-        if (level !in LOG_LEVELS) {
-            error("@Log(level = ...) is invalid: '$level' is not a member of io.ilogger.annotations.LogLevel.", fn)
+        // Class-level defaults (@LogConfig) fill in fields left at their @Log
+        // defaults; explicit method values always win. AUDIT is both the
+        // default and a meaningful value, so a method that must stay AUDIT
+        // under a non-AUDIT config sets useClassDefaults = false.
+        val classConfig = containerDecl?.let { Ks.annotation(it, Ks.LOG_CONFIG_FQN) }
+        val classLevel = classConfig?.arg("level")?.let { enumConstantName(it) } ?: "AUDIT"
+        if (classLevel !in LOG_LEVELS) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@LogConfig(level = ...) is invalid: '$classLevel' is not a member of " +
+                    "io.ilogger.annotations.LogLevel.\nFix: use TRACE, DEBUG, INFO, WARN, ERROR or AUDIT.",
+                containerDecl ?: fn,
+            )
             return null
         }
-        val category = (annotation.arg("category") as? String).orEmpty().trim()
-        val dispatch = annotation.arg("dispatch")?.let { enumConstantName(it) } ?: "DEFAULT"
-        if (dispatch !in DISPATCH_MODES) {
-            error("@Log(dispatch = ...) is invalid: '$dispatch' is not a member of io.ilogger.annotations.DispatchMode.", fn)
+        val classCategory = (classConfig?.arg("category") as? String).orEmpty().trim()
+        val classDispatch = classConfig?.arg("dispatch")?.let { enumConstantName(it) } ?: "DEFAULT"
+        if (classDispatch !in DISPATCH_MODES) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@LogConfig(dispatch = ...) is invalid: '$classDispatch' is not a member of " +
+                    "io.ilogger.annotations.DispatchMode.\nFix: use DEFAULT, INLINE, ASYNC or BUFFERED.",
+                containerDecl ?: fn,
+            )
+            return null
+        }
+        val classSampling = (classConfig?.arg("sampling") as? Double) ?: -1.0
+        if (classSampling != -1.0 && classSampling !in 0.0..1.0) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@LogConfig(sampling = $classSampling) is invalid: use -1.0 (inherit) or a rate within " +
+                    "[0.0..1.0].\nFix: pick a rate such as 0.5, or drop the override.",
+                containerDecl ?: fn,
+            )
+            return null
+        }
+        val classSensitive = classConfig?.arg("sensitive")?.let { enumConstantName(it) } ?: "DENY"
+        if (classSensitive !in SENSITIVE_MODES) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@LogConfig(sensitive = $classSensitive) is invalid: use DENY, OMIT, MASK or HASH.\n" +
+                    "Fix: pick one of the SensitiveHandling constants.",
+                containerDecl ?: fn,
+            )
+            return null
+        }
+        val useClassDefaults = (annotation.arg("useClassDefaults") as? Boolean) ?: true
+
+        val methodLevel = annotation.arg("level")?.let { enumConstantName(it) } ?: "AUDIT"
+        if (methodLevel !in LOG_LEVELS) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log(level = ...) is invalid: '$methodLevel' is not a member of io.ilogger.annotations.LogLevel.\n" +
+                    "Fix: use TRACE, DEBUG, INFO, WARN, ERROR or AUDIT.",
+                fn,
+            )
+            return null
+        }
+        val methodCategory = (annotation.arg("category") as? String).orEmpty().trim()
+        val methodDispatch = annotation.arg("dispatch")?.let { enumConstantName(it) } ?: "DEFAULT"
+        if (methodDispatch !in DISPATCH_MODES) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log(dispatch = ...) is invalid: '$methodDispatch' is not a member of " +
+                    "io.ilogger.annotations.DispatchMode.\nFix: use DEFAULT, INLINE, ASYNC or BUFFERED.",
+                fn,
+            )
             return null
         }
         val before = (annotation.arg("before") as? Boolean) ?: false
         val onSuccess = (annotation.arg("onSuccess") as? Boolean) ?: true
         val onFailure = (annotation.arg("onFailure") as? Boolean) ?: false
-        if (!before && !onSuccess && !onFailure) {
+        val onCancellation =
+            annotation.arg("onCancellation")?.let { enumConstantName(it) } ?: "SKIP"
+        if (onCancellation != "SKIP" && onCancellation != "LOG") {
             error(
-                "@Log would never emit an event (before=false, onSuccess=false, onFailure=false).\n" +
-                    "Fix: enable at least one of before/onSuccess/onFailure.",
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log(onCancellation = $onCancellation) is invalid: use OnCancellation.SKIP or " +
+                    "OnCancellation.LOG.\nFix: remove the override (SKIP is the default) or use LOG.",
                 fn,
             )
             return null
         }
-        val sampling = (annotation.arg("sampling") as? Double) ?: -1.0
-        if (sampling != -1.0 && sampling !in 0.0..1.0) {
+        if (!before && !onSuccess && !onFailure && onCancellation != "LOG") {
             error(
-                "@Log(sampling = $sampling) is invalid: use -1.0 (inherit) or a rate within [0.0..1.0].\n" +
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log would never emit an event (before=false, onSuccess=false, onFailure=false, " +
+                    "onCancellation=SKIP).\n" +
+                    "Fix: enable at least one of before/onSuccess/onFailure, or set onCancellation = LOG.",
+                fn,
+            )
+            return null
+        }
+        val methodSampling = (annotation.arg("sampling") as? Double) ?: -1.0
+        if (methodSampling != -1.0 && methodSampling !in 0.0..1.0) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log(sampling = $methodSampling) is invalid: use -1.0 (inherit) or a rate within [0.0..1.0].\n" +
                     "Fix: remove the override or use a rate in [0.0..1.0].",
                 fn,
             )
             return null
         }
+        val level =
+            if (useClassDefaults && methodLevel == "AUDIT" && classLevel != "AUDIT") classLevel else methodLevel
+        val category =
+            if (useClassDefaults && methodCategory.isEmpty() && classCategory.isNotEmpty()) classCategory
+            else methodCategory
+        val dispatch =
+            if (useClassDefaults && methodDispatch == "DEFAULT" && classDispatch != "DEFAULT") classDispatch
+            else methodDispatch
+        val sampling =
+            if (useClassDefaults && methodSampling == -1.0 && classSampling != -1.0) classSampling
+            else methodSampling
         if (sampling != -1.0 && sampling < 1.0 && level == "AUDIT") {
             error(
+                Diagnostic.AUDIT_SAMPLING,
                 "Audit events must not be sampled: @Log(level = AUDIT, sampling = $sampling) would silently lose " +
                     "accountability records.\nFix: remove sampling, use a diagnostic level, or configure explicit " +
                     "audit sampling at the application level.",
@@ -120,10 +264,32 @@ internal class OpParser(
 
         // ---- function shape ------------------------------------------------------
         val suspendFn = fn.modifiers.any { it == Modifier.SUSPEND }
+        val extensionReceiverType = fn.extensionReceiver?.resolve()
+        if (extensionReceiverType != null && extensionReceiverType.isError) {
+            error(
+                Diagnostic.FUNCTION_SHAPE,
+                "Extension receiver has an unresolved type; @Log cannot instrument it.\n" +
+                    "Fix: declare or import the receiver type explicitly.",
+                fn,
+            )
+            return null
+        }
+        if (onCancellation == "LOG" && !suspendFn) {
+            error(
+                Diagnostic.FUNCTION_SHAPE,
+                "@Log(onCancellation = LOG) requires a suspend function or a Flow return: only suspend calls " +
+                    "and flow collections can be cancelled.\nFix: make the function suspend or Flow-returning, " +
+                    "or remove the onCancellation override.",
+                fn,
+            )
+            return null
+        }
         if (dispatch == "INLINE" && !suspendFn) {
             error(
-                "@Log(dispatch = INLINE) cannot instrument non-suspend functions: INLINE delivery requires " +
-                    "the suspend API record().\nFix: make the function suspend, or remove the dispatch override.",
+                Diagnostic.FUNCTION_SHAPE,
+                "@Log(dispatch = INLINE) cannot instrument non-suspend, non-flow functions: INLINE delivery " +
+                    "requires the suspend API record().\nFix: make the function suspend or Flow-returning, " +
+                    "or remove the dispatch override.",
                 fn,
             )
             return null
@@ -133,14 +299,22 @@ internal class OpParser(
             val name = parameter.name?.asString()
             if (name.isNullOrBlank()) {
                 error(
-                    "Parameter #$index has no name (unsupported form) in function '${fn.simpleName.asString()}'.",
+                    Diagnostic.FUNCTION_SHAPE,
+                    "Parameter #$index has no name (unsupported form) in function " +
+                        "'${fn.simpleName.asString()}'.\n" +
+                        "Fix: declare a named parameter; Kotlin requires names on interface members.",
                     fn,
                 )
                 return null
             }
             val type = parameter.type.resolve()
             if (type.isError) {
-                error("Parameter '$name' has an unresolved type; @Log cannot instrument it.", fn)
+                error(
+                    Diagnostic.FUNCTION_SHAPE,
+                    "Parameter '$name' has an unresolved type; @Log cannot instrument it.\n" +
+                        "Fix: declare or import the parameter type explicitly.",
+                    fn,
+                )
                 return null
             }
             parameters.add(
@@ -149,12 +323,17 @@ internal class OpParser(
                     index = index,
                     type = type,
                     vararg = parameter.isVararg,
+                    sensitive = Ks.annotation(parameter, Ks.LOG_SENSITIVE_FQN) != null ||
+                        Ks.isSensitiveType(type),
+                    excluded = Ks.annotation(parameter, Ks.LOG_EXCLUDE_FQN) != null ||
+                        Ks.isExcludedType(type),
                 ),
             )
         }
         val returnType = fn.returnType?.resolve()
         if (returnType == null || returnType.isError) {
             error(
+                Diagnostic.FUNCTION_SHAPE,
                 "Function '${fn.simpleName.asString()}' lacks an explicit, resolvable return type.\n" +
                     "Fix: declare the return type explicitly (Unit counts).",
                 fn,
@@ -162,24 +341,30 @@ internal class OpParser(
             return null
         }
         val unitReturn = Ks.isUnit(returnType)
-        if (Ks.isFlow(returnType)) {
+        val flowReturn = Ks.isFlow(returnType)
+        if (onCancellation == "LOG" && !suspendFn && !flowReturn) {
             error(
-                "@Log cannot instrument Flow-returning functions: streams have no single success/failure boundary.\n" +
-                    "Fix: log flow outcomes at the collection site with ILogger.record(...), or remove @Log.",
+                Diagnostic.FUNCTION_SHAPE,
+                "@Log(onCancellation = LOG) requires a suspend function or a Flow return: only suspend calls " +
+                    "and flow collections can be cancelled.\nFix: make the function suspend or Flow-returning, " +
+                    "or remove the onCancellation override.",
                 fn,
             )
             return null
         }
-        for (parameter in parameters) {
-            if (RESERVED_HEADS.contains(parameter.name)) {
-                error(
-                    "Parameter name '${parameter.name}' collides with a reserved source keyword " +
-                        "(result/actor/context).\nFix: rename the parameter.",
-                    fn,
-                )
-                return null
-            }
+        if (dispatch == "INLINE" && !suspendFn && !flowReturn) {
+            error(
+                Diagnostic.FUNCTION_SHAPE,
+                "@Log(dispatch = INLINE) cannot instrument non-suspend, non-flow functions: INLINE delivery " +
+                    "requires the suspend API record().\nFix: make the function suspend or Flow-returning, " +
+                    "or remove the dispatch override.",
+                fn,
+            )
+            return null
         }
+        // Parameters named result/actor/context are accepted: source
+        // expressions resolve special heads first, and codegen names its
+        // locals so user parameter names cannot collide (G-19).
 
         // ---- entity ----------------------------------------------------------------
         val explicitEntityArg = annotation.arg("entity") as? KSType
@@ -187,20 +372,29 @@ internal class OpParser(
         var entityName: String? = null
         if (explicitEntity != null) {
             if (explicitEntity.isError) {
-                error("@Log(entity = ...) references an unresolvable type.", fn)
+                error(
+                    Diagnostic.ENTITY_SOURCE,
+                    "@Log(entity = ...) references an unresolvable type.\n" +
+                        "Fix: import the entity type and reference it as Task::class.",
+                    fn,
+                )
                 return null
             }
             entityName = Ks.simpleName(explicitEntity)
         }
         if (entityName == null) {
             val candidates = sortedSetOf<String>()
-            parameters.mapNotNull { Ks.domainCandidate(it.type) }.forEach { candidates.add(Ks.simpleName(it)) }
-            if (!unitReturn) Ks.domainCandidate(returnType)?.let { candidates.add(Ks.simpleName(it)) }
+            parameters.mapNotNull { Ks.domainCandidate(it.type, domainPackages) }.forEach { candidates.add(Ks.simpleName(it)) }
+            // Result/Flow-wrapped returns still attribute their element type.
+            if (!unitReturn) {
+                Ks.domainCandidate(Ks.unwrapStreamWrappers(returnType), domainPackages)?.let { candidates.add(Ks.simpleName(it)) }
+            }
             entityName = when (candidates.size) {
                 1 -> candidates.first()
                 0 -> null
                 else -> {
                     error(
+                        Diagnostic.ENTITY_INFERENCE,
                         "Cannot infer entity: multiple candidate types $candidates. ILogger will not guess.\n" +
                             "Fix: specify @Log(entity = Task::class) explicitly.",
                         fn,
@@ -220,7 +414,12 @@ internal class OpParser(
                     if (validateChain(parsed, parameters, returnType, SensitiveMode.ID, fn) == null) return null
                 is ResolvedExpr.Constant, is ResolvedExpr.ContextOf -> Unit
                 is ResolvedExpr.ActorOf, is ResolvedExpr.None -> {
-                    error("@Log(entityId = ...) cannot reference the ambient actor.", fn)
+                    error(
+                        Diagnostic.ENTITY_SOURCE,
+                        "@Log(entityId = ...) cannot reference the ambient actor.\n" +
+                            "Fix: select a parameter, result or constant; actor identity is recorded separately.",
+                        fn,
+                    )
                     return null
                 }
             }
@@ -236,19 +435,85 @@ internal class OpParser(
         // ---- actor override --------------------------------------------------------------
         val explicitActor = (annotation.arg("actor") as? String).orEmpty()
         var actor: ResolvedExpr? = null
+        var actorSensitiveMode = SensitiveMode.META_DENY
         if (explicitActor.isNotBlank()) {
             val parsed = resolveExpr(explicitActor, parameters, returnType, "@Log(actor)", fn, allowResult = false)
                 ?: return null
             when (parsed) {
                 is ResolvedExpr.ActorOf, is ResolvedExpr.None -> {
-                    error("@Log(actor) cannot reference the ambient actor — omit @Log(actor) to use it.", fn)
+                    error(
+                        Diagnostic.ACTOR_SOURCE,
+                        "@Log(actor) cannot reference the ambient actor — omit @Log(actor) to use it.\n" +
+                            "Fix: select a parameter/result value, or remove the override.",
+                        fn,
+                    )
                     return null
                 }
-                is ResolvedExpr.Param, is ResolvedExpr.Result ->
-                    validateChain(parsed, parameters, returnType, SensitiveMode.ID, fn) ?: return null
-                else -> Unit
+                is ResolvedExpr.Param, is ResolvedExpr.Result -> {
+                    // Actor attributes follow the container sensitive policy:
+                    // MASK/HASH sanitize, OMIT drops the actor, DENY refuses.
+                    val fallback = when (classSensitive) {
+                        "MASK" -> SensitiveMode.META_MASK
+                        "HASH" -> SensitiveMode.META_HASH
+                        "OMIT" -> SensitiveMode.META_OMIT
+                        else -> null
+                    }
+                    val blaze =
+                        validateChain(parsed, parameters, returnType, SensitiveMode.META_DENY, fn, fallback)
+                            ?: return null
+                    if (!blaze.omitted) {
+                        if (blaze.sensitiveTouched) {
+                            actorSensitiveMode = when (classSensitive) {
+                                "MASK" -> SensitiveMode.META_MASK
+                                "HASH" -> SensitiveMode.META_HASH
+                                else -> SensitiveMode.META_DENY
+                            }
+                            warn(
+                                Diagnostic.SENSITIVE_ACTOR,
+                                "Actor override '$explicitActor' selects sensitive values; the event records the " +
+                                    "$classSensitive projection instead of the raw value.\n" +
+                                    "Fix: keep the container policy if that projection is intended, or select " +
+                                    "non-sensitive actor attributes.",
+                                fn,
+                            )
+                        }
+                        actor = parsed
+                    } else if (level == "AUDIT") {
+                        warn(
+                            Diagnostic.SENSITIVE_ACTOR,
+                            "Actor override '$explicitActor' selects sensitive values and the container OMIT policy " +
+                                "drops it; this AUDIT event falls back to the ambient actor.\n" +
+                                "Fix: record a non-sensitive actor attribute, or use MASK/HASH for attribution.",
+                            fn,
+                        )
+                    }
+                }
+                else -> actor = parsed
             }
-            actor = parsed
+        }
+
+        if (requireActor && level == "AUDIT" && explicitActor.isBlank()) {
+            warn(
+                Diagnostic.MISSING_AUDIT_ACTOR,
+                "Audit operation '${containerDecl?.simpleName?.asString()?.plus(".") ?: ""}" +
+                    "${fn.simpleName.asString()}' has no explicit actor and depends on the ambient " +
+                    "actor or ILoggerConfig.actorProvider.\n" +
+                    "Fix: add @Log(actor = ...) for deterministic attribution, wrap the call in withActor { }, " +
+                    "or remove ilogger.require-actor.",
+                fn,
+            )
+        }
+
+        if (sinkCategories.isNotEmpty() && category.isNotEmpty() && category !in sinkCategories) {
+            warn(
+                Diagnostic.UNBOUND_CATEGORY,
+                "Category '$category' used by '${containerDecl?.simpleName?.asString()?.plus(".") ?: ""}" +
+                    "${fn.simpleName.asString()}' is not in the configured sink categories " +
+                    "$sinkCategories, so no sink may receive it.\n" +
+                    "Fix: bind a sink to '$category', or add it to ilogger.sink-categories / " +
+                    "ilogger { sinkCategories.add(\"$category\") } if the binding happens elsewhere.",
+                fn,
+            )
         }
 
         // ---- metadata -----------------------------------------------------------------------
@@ -258,21 +523,62 @@ internal class OpParser(
         for (entry in metadataAnnotations) {
             val valueExpr = (entry.arg("value") as? String).orEmpty()
             if (valueExpr.isBlank()) {
-                error("LogMeta requires a value expression.\nFix: LogMeta(\"task.priority\") etc.", fn)
+                error(
+                    Diagnostic.META_CONTRACT,
+                    "LogMeta requires a value expression.\nFix: LogMeta(\"task.priority\") etc.",
+                    fn,
+                )
                 return null
             }
             val parsed = resolveExpr(valueExpr, parameters, returnType, "LogMeta", fn, allowResult = true) ?: return null
 
             val sensitiveName = entry.arg("sensitive")?.let { enumConstantName(it) } ?: "DENY"
             if (sensitiveName !in SENSITIVE_MODES) {
-                error("Invalid LogMeta sensitive = $sensitiveName (use DENY, OMIT, MASK or HASH).", fn)
+                error(
+                    Diagnostic.META_CONTRACT,
+                    "Invalid LogMeta sensitive = $sensitiveName.\nFix: use DENY, OMIT, MASK or HASH.",
+                    fn,
+                )
                 return null
             }
-            val extractorFqn = if (hasExtractorRef(entry)) validateExtractor(entry) ?: return null else null
+            val inject = entry.arg("inject") as? Boolean ?: false
+            if (inject && !hasExtractorRef(entry)) {
+                error(
+                    Diagnostic.META_CONTRACT,
+                    "LogMeta('$valueExpr', inject = true) requires an extractor.\n" +
+                        "Fix: add extractor = MyExtractor::class, or drop inject.",
+                    fn,
+                )
+                return null
+            }
+            val extractor = if (hasExtractorRef(entry)) validateExtractor(entry, inject) ?: return null else null
+            val extractorFqn = extractor?.fqn
+            val adapterFqn = if (hasAdapterRef(entry)) validateAdapter(entry) ?: return null else null
+            if (extractorFqn != null && adapterFqn != null) {
+                error(
+                    Diagnostic.META_CONVERTER,
+                    "LogMeta('$valueExpr') combines an extractor with an adapter.\n" +
+                        "Fix: keep one converter — extractor (LogValueExtractor) for full control over the " +
+                        "log-safe shape, adapter (ValueAdapter) for a single-value render.",
+                    fn,
+                )
+                return null
+            }
             if (extractorFqn != null && sensitiveName in setOf("MASK", "HASH")) {
                 error(
+                    Diagnostic.META_CONVERTER,
                     "LogMeta('$valueExpr') combines an explicit extractor with sensitive = $sensitiveName.\n" +
                         "Fix: keep the extractor (it already defines the log-safe shape), or drop it and use " +
+                        "sensitive = $sensitiveName alone.",
+                    fn,
+                )
+                return null
+            }
+            if (adapterFqn != null && sensitiveName in setOf("MASK", "HASH")) {
+                error(
+                    Diagnostic.META_CONVERTER,
+                    "LogMeta('$valueExpr') combines an adapter with sensitive = $sensitiveName.\n" +
+                        "Fix: keep the adapter (it already defines the log-safe shape), or drop it and use " +
                         "sensitive = $sensitiveName alone.",
                     fn,
                 )
@@ -282,21 +588,60 @@ internal class OpParser(
             val mode = when (sensitiveName) {
                 "MASK" -> SensitiveMode.META_MASK
                 "HASH" -> SensitiveMode.META_HASH
+                "OMIT" -> SensitiveMode.META_OMIT
                 else -> SensitiveMode.META_DENY
             }
+            var resolvedMode = mode
             if (parsed.isChain) {
-                val blaze = validateChain(parsed, parameters, returnType, mode, fn) ?: return null
-                if (!Ks.isLoggableValueType(blaze.terminal) && extractorFqn == null) {
+                if (mode == SensitiveMode.META_OMIT && (extractorFqn != null || adapterFqn != null)) {
                     error(
-                        "Unsupported metadata type '${Ks.simpleName(blaze.terminal)}' for LogMeta('$valueExpr').\n" +
-                            "Fix: select loggable properties (numbers, booleans, strings, enums, one-level lists of " +
-                            "those), or provide LogMeta(extractor = SomeExtractor::class) to convert explicitly.",
+                        Diagnostic.META_CONTRACT,
+                        "LogMeta('$valueExpr', sensitive = OMIT) cannot combine with an extractor/adapter: the " +
+                            "entry is omitted, so the converter would never run.\n" +
+                            "Fix: remove the converter, or keep it and choose MASK/HASH instead.",
                         fn,
                     )
                     return null
                 }
-            } else if (sensitiveName == "OMIT") {
-                error("LogMeta('$valueExpr', sensitive = OMIT) contradicts itself — remove the entry instead.", fn)
+                // A converter defines the log-safe shape itself, so the class
+                // sensitive policy never stacks on top of one.
+                val sensitiveFallback =
+                    if (mode == SensitiveMode.META_DENY && extractorFqn == null && adapterFqn == null &&
+                        classSensitive in setOf("MASK", "HASH", "OMIT")
+                    ) {
+                        when (classSensitive) {
+                            "MASK" -> SensitiveMode.META_MASK
+                            "HASH" -> SensitiveMode.META_HASH
+                            else -> SensitiveMode.META_OMIT
+                        }
+                    } else {
+                        null
+                    }
+                val blaze =
+                    validateChain(parsed, parameters, returnType, mode, fn, sensitiveFallback) ?: return null
+                // OMIT emits no key at all: no name, no converter call, no
+                // allocation. An explicit OMIT always drops the entry; the
+                // container-wide policy drops only sensitive-touched entries.
+                if (mode == SensitiveMode.META_OMIT || blaze.omitted) continue
+                if (sensitiveFallback != null && blaze.sensitiveTouched) resolvedMode = sensitiveFallback
+                if (!Ks.isLoggableValueType(blaze.terminal) && extractorFqn == null && adapterFqn == null) {
+                    error(
+                        Diagnostic.META_CONTRACT,
+                        "Unsupported metadata type '${Ks.simpleName(blaze.terminal)}' for LogMeta('$valueExpr').\n" +
+                            "Fix: select loggable properties (numbers, booleans, strings, chars, enums, UUID, " +
+                            "Instant, Duration, BigDecimal, one-level lists/arrays/maps of those, value classes), " +
+                            "or provide LogMeta(extractor = ... / adapter = ...) to convert explicitly.",
+                        fn,
+                    )
+                    return null
+                }
+            } else if (mode == SensitiveMode.META_OMIT) {
+                error(
+                    Diagnostic.META_CONTRACT,
+                    "LogMeta('$valueExpr', sensitive = OMIT) cannot apply to a constant, actor or context " +
+                        "source — there is no marked value to omit.\nFix: remove the entry instead.",
+                    fn,
+                )
                 return null
             }
 
@@ -304,6 +649,7 @@ internal class OpParser(
             val name = explicitName.ifBlank { deriveMetaName(parsed, parameters) }
             if (name == null) {
                 error(
+                    Diagnostic.META_CONTRACT,
                     "LogMeta('$valueExpr') needs an explicit name.\n" +
                         "Fix: LogMeta('$valueExpr', name = \"desiredKey\").",
                     fn,
@@ -312,13 +658,24 @@ internal class OpParser(
             }
             if (!metaNames.add(name)) {
                 error(
+                    Diagnostic.META_CONTRACT,
                     "Duplicate metadata name '$name' in @Log of '${fn.simpleName.asString()}'.\n" +
                         "Fix: remove one of the duplicates.",
                     fn,
                 )
                 return null
             }
-            metadata.add(ResolvedMeta(name = name, expr = parsed, sensitiveMode = mode, extractorFqn = extractorFqn))
+            metadata.add(
+                ResolvedMeta(
+                    name = name,
+                    expr = parsed,
+                    sensitiveMode = resolvedMode,
+                    extractorFqn = extractorFqn,
+                    adapterFqn = adapterFqn,
+                    extractorInjected = inject,
+                    extractorIsObject = extractor?.isObject == true,
+                ),
+            )
         }
 
         // ---- changes -----------------------------------------------------------------------
@@ -328,11 +685,17 @@ internal class OpParser(
         for (entry in changeAnnotations) {
             val field = (entry.arg("field") as? String).orEmpty().trim()
             if (field.isBlank()) {
-                error("LogChange requires a non-blank field name.", fn)
+                error(
+                    Diagnostic.CHANGE_CONTRACT,
+                    "LogChange requires a non-blank field name.\n" +
+                        "Fix: use changes = [LogChange(field = \"title\", from = ..., to = ...)].",
+                    fn,
+                )
                 return null
             }
             if (!fieldsSeen.add(field)) {
                 error(
+                    Diagnostic.CHANGE_CONTRACT,
                     "Duplicate LogChange field '$field'.\n" +
                         "Fix: remove the duplicate to keep events deterministic.",
                     fn,
@@ -348,6 +711,7 @@ internal class OpParser(
                     val blaze = validateChain(expr, parameters, returnType, SensitiveMode.CHANGE, fn) ?: return null
                     if (!Ks.isLoggableValueType(blaze.terminal)) {
                         error(
+                            Diagnostic.CHANGE_CONTRACT,
                             "Unsupported LogChange value type '${Ks.simpleName(blaze.terminal)}' for field " +
                                 "'$field' ($direction: $fromExpr).\n" +
                                 "Fix: compare loggable values only (numbers, booleans, strings, enums).",
@@ -360,6 +724,26 @@ internal class OpParser(
             changes.add(ResolvedChange(field = field, before = from, after = to))
         }
 
+        // Flow-returning functions emit start/terminal events only: there is no
+        // single result value, so result-headed selections cannot render.
+        if (flowReturn) {
+            val resultOffender = listOfNotNull(entityId, actor)
+                .plus(metadata.map { it.expr })
+                .plus(changes.flatMap { listOf(it.before, it.after) })
+                .firstOrNull { it.usesResult }
+            if (resultOffender != null) {
+                error(
+                    Diagnostic.FUNCTION_SHAPE,
+                    "Flow-returning '${fn.simpleName.asString()}' has no single result value: " +
+                        "'${exprSource(resultOffender)}' cannot be selected.\n" +
+                        "Fix: select parameters or constants only — flow instrumentation reports the " +
+                        "subscription and the terminal event, not per-value results.",
+                    fn,
+                )
+                return null
+            }
+        }
+
         var usesContext: Boolean =
             metadata.any { it.expr is ResolvedExpr.ContextOf || it.expr is ResolvedExpr.ActorOf } ||
                 entityId is ResolvedExpr.ContextOf ||
@@ -368,8 +752,9 @@ internal class OpParser(
 
         return ResolvedOp(
             fn = fn,
-            interfaceDecl = enclosing,
-            interfacePackage = interfacePackage,
+            containerDecl = containerDecl,
+            containerPackage = containerPackage,
+            extensionReceiverType = extensionReceiverType,
             suspendFn = suspendFn,
             unitReturn = unitReturn,
             returnType = returnType,
@@ -383,13 +768,17 @@ internal class OpParser(
             entityName = entityName,
             entityId = entityId,
             actor = actor,
+            actorSensitiveMode = actorSensitiveMode,
             metadata = metadata,
             changes = changes,
             before = before,
             onSuccess = onSuccess,
             onFailure = onFailure,
+            onCancellation = onCancellation,
             description = description,
-            source = "${enclosing.simpleName.asString()}.${fn.simpleName.asString()}",
+            source = containerDecl?.simpleName?.asString()
+                ?.let { "$it.${fn.simpleName.asString()}" }
+                ?: fn.simpleName.asString(),
             usesContext = usesContext,
         )
     }
@@ -407,6 +796,7 @@ internal class OpParser(
         returnType: KSType,
         mode: SensitiveMode,
         fn: KSFunctionDeclaration,
+        sensitiveFallback: SensitiveMode? = null,
     ): Blaze? {
         val label = exprSource(expr)
         val rootChain: List<String> = when (expr) {
@@ -415,17 +805,96 @@ internal class OpParser(
             else -> return null
         }
         if (expr !is ResolvedExpr.Param && expr !is ResolvedExpr.Result) return null
+        var resultUnwrapped = false
         val rootType = when (expr) {
             is ResolvedExpr.Param -> parameters[expr.index].type
-            else -> returnType
+            else -> {
+                val (unwrapped, wasWrapped) = Ks.unwrapResult(returnType)
+                resultUnwrapped = wasWrapped
+                unwrapped
+            }
         }
         var current = rootType
         val resolved = ArrayList<KSPropertyDeclaration>()
+        var sensitiveTouched = false
+        var omitted = false
+
+        fun applySensitive(subject: String, node: Any): Boolean {
+            sensitiveTouched = true
+            // @LogConfig(sensitive = ...) supplies the policy for META_DENY
+            // chains that select sensitive values without one.
+            val effective =
+                if (mode == SensitiveMode.META_DENY && sensitiveFallback != null) sensitiveFallback else mode
+            when (effective) {
+                SensitiveMode.ID -> error(
+                    Diagnostic.SENSITIVE_ID,
+                    "'$label' selects $subject marked @LogSensitive; entity ids must never be masked or hashed.\n" +
+                        "Fix: pick a different id source.",
+                    node,
+                )
+                SensitiveMode.CHANGE -> error(
+                    Diagnostic.SENSITIVE_CHANGE,
+                    "LogChange('$label') selects $subject marked @LogSensitive.\n" +
+                        "Fix: use non-sensitive fields, or record the value through LogMeta with an explicit " +
+                        "MASK/HASH sensitive policy.",
+                    node,
+                )
+                SensitiveMode.META_DENY -> error(
+                    Diagnostic.SENSITIVE_POLICY,
+                    "'$label' selects $subject marked @LogSensitive without an explicit policy.\n" +
+                        "Fix: choose MASK/HASH/OMIT (per selection via LogMeta(...) or container-wide via " +
+                        "@LogConfig(sensitive = ...)), or select a different value.",
+                    node,
+                )
+                SensitiveMode.META_OMIT -> {
+                    omitted = true
+                    return true
+                }
+                SensitiveMode.META_MASK, SensitiveMode.META_HASH -> Unit // allowance carried to codegen
+            }
+            return effective == SensitiveMode.META_MASK || effective == SensitiveMode.META_HASH
+        }
+
+        // The root of a selection can carry the mark itself: a parameter
+        // annotation (`@LogSensitive token`), a type-use annotation
+        // (`token: @LogSensitive String`, `(): @LogSensitive User`) or a
+        // marked class.
+        when (expr) {
+            is ResolvedExpr.Param -> {
+                val parameter = parameters[expr.index]
+                if (parameter.excluded) {
+                    error(
+                        Diagnostic.PROPERTY_CHAIN,
+                        "Parameter '${parameter.name}' is @LogExclude and can never appear in '$label'.\n" +
+                            "Fix: remove it from the expression, or relax @LogExclude if this data is legitimately loggable.",
+                        fn,
+                    )
+                    return null
+                }
+                if (parameter.sensitive && !applySensitive("parameter '${parameter.name}'", fn)) return null
+            }
+            is ResolvedExpr.Result -> {
+                if (Ks.isExcludedType(rootType)) {
+                    error(
+                        Diagnostic.PROPERTY_CHAIN,
+                        "The return value of '${fn.simpleName.asString()}' is @LogExclude and can never appear in " +
+                            "'$label'.\nFix: remove it from the expression, or relax @LogExclude if this data is " +
+                            "legitimately loggable.",
+                        fn,
+                    )
+                    return null
+                }
+                if (Ks.isSensitiveType(rootType) && !applySensitive("the return value", fn)) return null
+            }
+            else -> Unit
+        }
+
         for (segmentName in rootChain) {
             val declaration = current.declaration as? KSClassDeclaration
             val property = declaration?.getAllProperties()?.firstOrNull { it.simpleName.asString() == segmentName }
             if (property == null) {
                 error(
+                    Diagnostic.PROPERTY_CHAIN,
                     "Requested property '$segmentName' does not exist on '${Ks.simpleName(current)}' (in '$label').\n" +
                         "Fix: correct the property chain.",
                     fn,
@@ -434,6 +903,7 @@ internal class OpParser(
             }
             if (Ks.isExcluded(property)) {
                 error(
+                    Diagnostic.PROPERTY_CHAIN,
                     "Property '${property.simpleName.asString()}' is @LogExclude and can never appear in '$label'.\n" +
                         "Fix: remove it from the expression, or relax @LogExclude if this data is legitimately loggable.",
                     property,
@@ -441,31 +911,13 @@ internal class OpParser(
                 return null
             }
             if (Ks.isSensitive(property)) {
-                when (mode) {
-                    SensitiveMode.ID -> error(
-                        "'$label' selects value of '${property.simpleName.asString()}' marked @LogSensitive; " +
-                            "entity ids must never be masked or hashed.\nFix: pick a different id source.",
-                        property,
-                    )
-                    SensitiveMode.CHANGE -> error(
-                        "LogChange('$label') selects value of '${property.simpleName.asString()}' marked @LogSensitive.\n" +
-                            "Fix: use non-sensitive fields, or record the value through LogMeta with an explicit " +
-                            "MASK/HASH sensitive policy.",
-                        property,
-                    )
-                    SensitiveMode.META_DENY -> error(
-                        "LogMeta('$label') selects value of '${property.simpleName.asString()}' marked @LogSensitive " +
-                            "without an explicit policy.\nFix: choose LogMeta(..., sensitive = MASK|HASH) or select a " +
-                            "different property.",
-                        property,
-                    )
-                    SensitiveMode.META_MASK, SensitiveMode.META_HASH -> Unit // allowance carried to codegen
-                }
-                if (mode != SensitiveMode.META_MASK && mode != SensitiveMode.META_HASH) return null
+                if (!applySensitive("value of '${property.simpleName.asString()}'", property)) return null
             } else if (Ks.suspiciousName(property.simpleName.asString())) {
                 warn(
+                    Diagnostic.SUSPICIOUS_NAME,
                     "Property '${property.simpleName.asString()}' looks sensitive by name but is not marked " +
-                        "(@LogSensitive/@LogExclude). It is logged only because you selected it explicitly.",
+                        "(@LogSensitive/@LogExclude). It is logged only because you selected it explicitly.\n" +
+                        "Fix: confirm the selection, or mark the property @LogSensitive/@LogExclude.",
                     fn,
                 )
             }
@@ -475,10 +927,15 @@ internal class OpParser(
         }
         when (expr) {
             is ResolvedExpr.Param -> expr.chainInfo = ChainInfo(resolved)
-            is ResolvedExpr.Result -> expr.chainInfo = ChainInfo(resolved)
+            is ResolvedExpr.Result -> expr.chainInfo = ChainInfo(resolved, resultUnwrapped)
             else -> Unit
         }
-        return Blaze(terminal = current, properties = resolved)
+        return Blaze(
+            terminal = current,
+            properties = resolved,
+            sensitiveTouched = sensitiveTouched,
+            omitted = omitted,
+        )
     }
 
     /**
@@ -514,7 +971,12 @@ internal class OpParser(
     ): ResolvedExpr? {
         val text = raw.trim()
         if (text.isBlank()) {
-            error("$purpose expression must not be empty.", fn)
+            error(
+                Diagnostic.EXPRESSION_SYNTAX,
+                "$purpose expression must not be empty.\n" +
+                    "Fix: use result, actor, context.<key>, a parameter name, a property chain or a quoted constant.",
+                fn,
+            )
             return null
         }
         if (text.length >= 2 && text.startsWith("'") && text.endsWith("'")) {
@@ -527,13 +989,16 @@ internal class OpParser(
             "result" -> {
                 if (!allowResult) {
                     error(
-                        "$purpose cannot use 'result' — it is unavailable in this position.",
+                        Diagnostic.EXPRESSION_SYNTAX,
+                        "$purpose cannot use 'result' — it is unavailable in this position.\n" +
+                            "Fix: select a parameter or a constant instead.",
                         fn,
                     )
                     return null
                 }
                 if (Ks.isUnit(returnType)) {
                     error(
+                        Diagnostic.EXPRESSION_SYNTAX,
                         "$purpose requests '${"result${if (rest.isNotBlank()) ".$rest" else ""}"}' but " +
                             "'${fn.simpleName.asString()}' returns Unit; there is no result value.\n" +
                             "Fix: use a parameter-based source or a constant.",
@@ -546,7 +1011,9 @@ internal class OpParser(
             "actor" -> {
                 if (chain.size > 1) {
                     error(
-                        "$purpose: 'actor' source supports one accessor (actor, actor.id, actor.name, actor.type, actor.<attr>).",
+                        Diagnostic.EXPRESSION_SYNTAX,
+                        "$purpose: 'actor' source supports one accessor (actor, actor.id, actor.name, actor.type, actor.<attr>).\n" +
+                            "Fix: use a single accessor, or select an explicit parameter.",
                         fn,
                     )
                     return null
@@ -555,7 +1022,12 @@ internal class OpParser(
             }
             "context" -> {
                 if (chain.size != 1 || chain[0].isBlank()) {
-                    error("$purpose: 'context' source requires exactly one key: context.<key>.", fn)
+                    error(
+                        Diagnostic.EXPRESSION_SYNTAX,
+                        "$purpose: 'context' source requires exactly one key: context.<key>.\n" +
+                            "Fix: reference context.<key>, e.g. context.requestId.",
+                        fn,
+                    )
                     return null
                 }
                 return ResolvedExpr.ContextOf(chain.first())
@@ -565,6 +1037,7 @@ internal class OpParser(
                 if (parameter == null) {
                     val known = parameters.joinToString { it.name }.ifBlank { "<none — function has no parameters>" }
                     error(
+                        Diagnostic.EXPRESSION_SYNTAX,
                         "$purpose: unknown source '$head'. Known sources: result, actor, context.<key>, " +
                             "parameter names ($known).\nFix: correct the expression.",
                         fn,
@@ -573,6 +1046,7 @@ internal class OpParser(
                 }
                 if (parameter.vararg && chain.isNotEmpty()) {
                     error(
+                        Diagnostic.EXPRESSION_SYNTAX,
                         "$purpose: vararg parameter '${parameter.name}' cannot provide chained values " +
                             "('$head.$rest') — it arrives as an expanded array.\n" +
                             "Fix: use the parameter itself (with LogMeta extractor = ... to convert it), " +
@@ -609,17 +1083,19 @@ internal class OpParser(
             else -> false
         }
         if (insertShaped) {
-            if (Ks.isIdType(returnType)) return ResolvedExpr.Result(chain = emptyList())
-            if (isListOfIdType(returnType)) {
+            val unwrappedReturn = Ks.unwrapResult(returnType).first
+            if (Ks.isIdType(unwrappedReturn)) return ResolvedExpr.Result(chain = emptyList())
+            if (isListOfIdType(unwrappedReturn)) {
                 // batch insert: multiple ids; a single entityId is not provable
                 return ResolvedExpr.None
             }
             // otherwise continue to parameter-based inference
         }
 
-        val domainParams = parameters.mapNotNull { p -> Ks.domainCandidate(p.type)?.let { p to it } }
+        val domainParams = parameters.mapNotNull { p -> Ks.domainCandidate(p.type, domainPackages)?.let { p to it } }
         if (domainParams.size > 1) {
             error(
+                Diagnostic.ENTITY_ID_INFERENCE,
                 "Cannot infer entity ID: ${domainParams.size} entity parameters " +
                     "(${domainParams.joinToString { it.first.name }}) are equally plausible. ILogger never guesses.\n" +
                     "Fix: specify @Log(entityId = \"...\") naming the parameter/property, e.g. @Log(entityId = \"task.id\").",
@@ -646,6 +1122,7 @@ internal class OpParser(
                     candidates.add(idish.first() to null)
                 } else {
                     error(
+                        Diagnostic.ENTITY_ID_INFERENCE,
                         "Cannot infer entity ID: ${idParams.size} id-typed parameters " +
                             "(${idParams.joinToString { it.name }}) are equally plausible. ILogger never guesses.\n" +
                             "Fix: specify @Log(entityId = \"...\") explicitly.",
@@ -667,6 +1144,7 @@ internal class OpParser(
             }
             0 -> {
                 error(
+                    Diagnostic.ENTITY_ID_INFERENCE,
                     "Cannot infer entity ID of '${fn.simpleName.asString()}'. No provable source: the result is not " +
                         "an id, no entity id property (named 'id', or marked @LogEntityId / Room's @PrimaryKey), and " +
                         "no single id-typed parameter.\n" +
@@ -677,6 +1155,7 @@ internal class OpParser(
             }
             else -> {
                 error(
+                    Diagnostic.ENTITY_ID_INFERENCE,
                     "Cannot infer entity ID: ambiguous candidates (${candidates.joinToString { it.first.name }}).\n" +
                         "ILogger never guesses.\nFix: specify @Log(entityId = \"...\") explicitly.",
                     fn,
@@ -696,17 +1175,29 @@ internal class OpParser(
         return !Ks.isNotSuppliedType(extractor)
     }
 
-    private fun validateExtractor(entry: KSAnnotation): String? {
-        val extractor = entry.arg("extractor") as? KSType ?: return null
-        val declaration = extractor.declaration as? KSClassDeclaration
+    private fun hasAdapterRef(entry: KSAnnotation): Boolean {
+        val adapter = entry.arg("adapter") as? KSType ?: return false
+        return !Ks.isNotSuppliedType(adapter)
+    }
+
+    private fun validateAdapter(entry: KSAnnotation): String? {
+        val adapter = entry.arg("adapter") as? KSType ?: return null
+        val declaration = adapter.declaration as? KSClassDeclaration
         if (declaration == null) {
-            error("LogMeta(extractor = ...) must be a class reference implementing io.ilogger.core.LogValueExtractor.", entry)
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(adapter = ...) must be a class reference implementing io.ilogger.core.ValueAdapter.\n" +
+                    "Fix: pass a concrete class, e.g. adapter = MyAdapter::class.",
+                entry,
+            )
             return null
         }
-        if (!implementsExtractor(declaration)) {
+        if (!implementsValueAdapter(declaration)) {
             error(
-                "LogMeta(extractor = ${declaration.simpleName.asString()}::class) must implement " +
-                    "io.ilogger.core.LogValueExtractor.",
+                Diagnostic.META_CONVERTER,
+                "LogMeta(adapter = ${declaration.simpleName.asString()}::class) must implement " +
+                    "io.ilogger.core.ValueAdapter.\n" +
+                    "Fix: implement ValueAdapter, or remove the adapter and select loggable properties.",
                 declaration,
             )
             return null
@@ -714,13 +1205,97 @@ internal class OpParser(
         val ctor = declaration.primaryConstructor
         if (ctor != null && ctor.parameters.isNotEmpty()) {
             error(
-                "LogMeta(extractor = ${declaration.simpleName.asString()}::class) requires a no-argument " +
+                Diagnostic.META_CONVERTER,
+                "LogMeta(adapter = ${declaration.simpleName.asString()}::class) requires a no-argument " +
                     "constructor.\nFix: provide an empty primary constructor.",
                 declaration,
             )
             return null
         }
         return declaration.qualifiedName?.asString()
+    }
+
+    private fun implementsValueAdapter(declaration: KSClassDeclaration): Boolean {
+        val queue = ArrayDeque<KSClassDeclaration>()
+        queue.add(declaration)
+        val seen = HashSet<String>()
+        while (queue.isNotEmpty()) {
+            val current = queue.removeFirst()
+            val fqn = current.qualifiedName?.asString() ?: continue
+            if (!seen.add(fqn)) continue
+            if (fqn == "io.ilogger.core.ValueAdapter") return true
+            for (superType in current.superTypes) {
+                val sup = superType.resolve().declaration as? KSClassDeclaration ?: continue
+                queue.add(sup)
+            }
+        }
+        return false
+    }
+
+    private class ExtractorRef(val fqn: String, val isObject: Boolean)
+
+    private fun validateExtractor(entry: KSAnnotation, inject: Boolean): ExtractorRef? {
+        val extractor = entry.arg("extractor") as? KSType ?: return null
+        val declaration = extractor.declaration as? KSClassDeclaration
+        if (declaration == null) {
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(extractor = ...) must be a class reference implementing io.ilogger.core.LogValueExtractor.\n" +
+                    "Fix: pass a concrete class, e.g. extractor = MyExtractor::class.",
+                entry,
+            )
+            return null
+        }
+        if (!implementsExtractor(declaration)) {
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(extractor = ${declaration.simpleName.asString()}::class) must implement " +
+                    "io.ilogger.core.LogValueExtractor.\n" +
+                    "Fix: implement LogValueExtractor<T>, or remove the extractor and select loggable properties.",
+                declaration,
+            )
+            return null
+        }
+        val name = declaration.simpleName.asString()
+        val fqn = declaration.qualifiedName?.asString() ?: return null
+        val isObject = declaration.classKind == ClassKind.OBJECT
+        if (inject) {
+            // Registered through ILogger.extractors; no construction here.
+            return ExtractorRef(fqn, isObject)
+        }
+        if (isObject) return ExtractorRef(fqn, isObject = true)
+        if (declaration.classKind != ClassKind.CLASS || Modifier.ABSTRACT in declaration.modifiers) {
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(extractor = $name::class) cannot be instantiated by generated code.\n" +
+                    "Fix: register a concrete instance with inject = true and " +
+                    "ILogger.create { extractor($name::class) { ... } }.",
+                declaration,
+            )
+            return null
+        }
+        if (Modifier.INNER in declaration.modifiers) {
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(extractor = $name::class) is an inner class and cannot be instantiated by generated code.\n" +
+                    "Fix: make it a top-level or nested class, or register it with inject = true.",
+                declaration,
+            )
+            return null
+        }
+        val primary = declaration.primaryConstructor
+        val constructible = primary == null || primary.parameters.all { it.hasDefault }
+        if (!constructible) {
+            error(
+                Diagnostic.META_CONVERTER,
+                "LogMeta(extractor = $name::class) needs a public no-argument constructor for generated code.\n" +
+                    "Fix: provide one, or declare LogMeta(..., inject = true) and register a factory with " +
+                    "ILogger.create { extractor($name::class) { $name(...) } }.",
+                declaration,
+            )
+            return null
+        }
+        return ExtractorRef(fqn, isObject = false)
     }
 
     private fun implementsExtractor(declaration: KSClassDeclaration): Boolean {
@@ -740,11 +1315,15 @@ internal class OpParser(
         return false
     }
 
-    internal class Blaze internal constructor(val terminal: KSType, val properties: List<KSPropertyDeclaration>)
+    internal class Blaze internal constructor(
+        val terminal: KSType,
+        val properties: List<KSPropertyDeclaration>,
+        val sensitiveTouched: Boolean = false,
+        /** True when a sensitive target was reached under an OMIT policy. */
+        val omitted: Boolean = false,
+    )
 
     private companion object {
-        val ACTION_REGEX = Regex("^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)+$")
-        val RESERVED_HEADS = setOf("result", "actor", "context")
         val LOG_LEVELS = setOf("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "AUDIT")
         val DISPATCH_MODES = setOf("DEFAULT", "INLINE", "ASYNC", "BUFFERED")
         val SENSITIVE_MODES = setOf("DENY", "OMIT", "MASK", "HASH")

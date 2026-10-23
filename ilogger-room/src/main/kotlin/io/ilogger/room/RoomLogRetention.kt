@@ -5,9 +5,10 @@ package io.ilogger.room
  * at most once per [sweepEveryMillis] of log writes.
  *
  * Sweeping happens inside the (already off-hot-path) dispatch worker, right
- * after a successful insert, so no extra coroutine or timer is required.
- * Retention is opt-in: [RoomLogTarget] purges nothing unless a policy is
- * supplied.
+ * after a successful insert, so no extra coroutine or timer is required for a
+ * busy process. For an idle app, drive the same policy with
+ * [RoomLogRetentionScheduler]. Retention is opt-in: [RoomLogTarget] purges
+ * nothing unless a policy is supplied.
  */
 public class RoomLogRetention(
     /** Maximum age of a retained row, in milliseconds. */

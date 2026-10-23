@@ -194,8 +194,8 @@ val dao = db.taskDao().logged(logger)
         Recipe(
             id = "ktor",
             title = "Ktor: request audit + ambient context",
-            subtitle = "One plugin installation attributes every wrapper call to the request.",
-            tags = listOf("server", "ktor"),
+            subtitle = "One server install and one client install attribute every call to the request.",
+            tags = listOf("server", "client", "ktor"),
             code = """
 val auditLogger = ILogger.create {
     sink(ConsoleLogSink())
@@ -211,6 +211,8 @@ embeddedServer(CIO, host = "127.0.0.1", port = 8080) {
         }
         correlationHeader = "X-Request-Id"          // echoed back when generated
         excludePaths = setOf("/health", "/ready", "/metrics")
+        sampling = 1.0                              // per-request audit rate
+        failureEvents = HttpFailureEvents.SINGLE    // one event per request
     }
 
     routing {
@@ -222,8 +224,19 @@ embeddedServer(CIO, host = "127.0.0.1", port = 8080) {
         }
     }
 }
-// One "http.request" event per call: method, path, status, durationMillis.
-// 4xx/5xx -> outcome FAILURE; CallFailed attaches the structured failure.
+
+// Outbound calls: propagates X-Request-Id and traceparent, audits each send.
+val http = HttpClient(CIO) {
+    install(HttpAuditClient) { logger = auditLogger }
+}
+
+withCorrelation("checkout-42") {
+    http.get("https://inventory.example/stock")     // X-Request-Id: checkout-42
+}
+
+// Server: one "http.request" per call: method, path, status, durationMillis.
+// Client: one "http.client.request" per send; transport failures carry the cause.
+// 4xx/5xx -> outcome FAILURE; correlation flows across both plugins.
 """.trimIndent(),
         ),
         Recipe(

@@ -16,7 +16,14 @@ public enum class SensitiveHandling {
      */
     DENY,
 
-    /** Exclude the value from the event entirely. */
+    /**
+     * Omit the entry entirely: no key is generated, no converter runs and no
+     * allocation happens for it. On `LogMeta(..., sensitive = OMIT)` the
+     * entry never appears; as a container-wide `@LogConfig(sensitive = OMIT)`
+     * policy it drops every policy-less selection that touches a sensitive
+     * value (and any actor override doing so). Entity ids and changes never
+     * accept OMIT — they refuse sensitive sources outright.
+     */
     OMIT,
 
     /** Replace the value with a fixed mask (`"***"`). */
