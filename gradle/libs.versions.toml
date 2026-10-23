@@ -30,7 +30,7 @@ ktor = "3.6.0"
 slf4j = "2.0.17"
 logback = "1.5.18"
 # Test-only HTTP server for the remote sink (G-29); not a runtime dependency.
-okhttp = "4.12.0"
+okhttp = "5.5.0"
 # OpenTelemetry (G-33). The API is compile-only for consumers, like SLF4J:
 # ilogger-otel never forces an OTel version onto the host application.
 opentelemetry = "1.43.0"
