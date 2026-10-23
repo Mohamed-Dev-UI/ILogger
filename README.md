@@ -1,9 +1,23 @@
 # ILogger
 
-Annotation-driven, audit-grade logging for Kotlin. Mark domain operations with
-`@Log`, let the KSP processor generate the instrumentation, and get structured
-events from a framework-independent core — with compile-time validation of
-everything it cannot prove.
+**Audit-grade, annotation-driven logging for Kotlin.**
+
+[![CI](https://github.com/Mohamed-Dev-UI/ILogger/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Mohamed-Dev-UI/ILogger/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.mohamed-dev-ui/ilogger-core?label=Maven%20Central)](https://central.sonatype.com/artifact/io.github.mohamed-dev-ui/ilogger-core)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.2.10-7F52FF)](https://kotlinlang.org)
+[![Android API](https://img.shields.io/badge/Android-API%2028%2B-3DDC84)](https://developer.android.com)
+
+ILogger turns annotated domain operations into structured audit events. Mark an
+interface method with `@Log`, let the KSP processor generate the instrumentation,
+and the framework-independent engine records **who did what, to which entity,
+with which outcome** — then delivers it to the console, files, Room, HTTP,
+OpenTelemetry or a custom sink.
+
+It is built for auditability rather than debugging: events carry actor,
+correlation and causation identities; delivery is bounded, observable and
+isolated per sink; and anything that cannot be proven at compile time is
+rejected by the processor with an actionable diagnostic.
 
 ```kotlin
 object TaskActions {
@@ -15,65 +29,59 @@ interface TaskRepository {
     suspend fun insert(task: Task): Long
 }
 
-// one line attaches the generated adapter — events record, calls forward:
-val dao = InMemoryTaskRepository().logged(logger)
+val logger = ILogger.create { sink(ConsoleLogSink()) }
+val repository = InMemoryTaskRepository().logged(logger)   // generated adapter
+
+withActor(Actor.user("u-42", name = "Grace")) {
+    repository.insert(Task(title = "Ship the release"))
+}
 ```
 
-Because auditing is a **cross-cutting reliability concern**, ILogger's
-priorities are, in order:
+```
+1783212345678 [AUDIT] task.created actor=u-42(Grace) Task(1) via TaskRepository.insert {title=Ship the release}
+```
 
-1. **Audit correctness** — *who* did *what* to *which entity*, with outcome,
-   actor attribution, correlation/causation identities, and failure payloads
-   that never swallow exceptions.
-2. **Bounded, isolated delivery** — one bounded pipeline per sink binding
-   (`bufferSize`, `sinkConcurrency`, explicit overflow policies); a slow or
-   failing sink cannot delay the others, and every lost delivery is reported
-   with a `DropReason` (`onDrop`, optional dead-letter sink) and visible in
-   `stats()`.
-3. **Zero coupling in core** — no Android / Room / Ktor / serialization in
-   `ilogger-core`; optional integrations ship as separate modules.
-4. **Compile-time guarantees** — actors, entities and ids are *proven* from
-   signatures; ambiguous flows do not compile, always with a "Fix:" hint.
+`entity` and `entityId` were inferred from the parameter and return type, the
+actor came from the ambient scope, and the original method still returns its
+result and rethrows failures unchanged.
 
-## Modules
+## Why ILogger
 
-| Module | Purpose |
-|---|---|
-| `ilogger-annotations` | `@Log` & friends: annotation contracts (no dependencies) |
-| `ilogger-core` | Engine: `ILogger`, sinks, dispatch, ambient context (coroutines only) |
-| `ilogger-ksp` | KSP processor: generates the `.logged()` adapters, database facades and optional Hilt/Koin bindings |
-| `ilogger-gradle-plugin` | One-line setup: applies KSP, adds the runtime/processor dependencies and exposes the typed `ilogger { }` DSL |
-| `ilogger-bom` | Version alignment for every published module (`java-platform`) |
-| `ilogger-testing` | `TestKit` (deterministic logger + sink + clock + ids), fakes (in-memory, failing, blocking, seeded chaos), and a reusable `LogSinkConformance` suite for new sinks |
-| `ilogger-room` | Room lifecycle audit + one-line event persistence with a shipped entity/DAO, live filtered queries, JSONL export/import, retention scheduling and payload cipher hook (KMP, JVM/Android) |
-| `ilogger-serialization` | `JsonEventCodec`: JSONL events for durable sinks |
-| `ilogger-remote` | Batched HTTP shipping: gzip JSONL, retries/backoff, durable file spool, circuit breaker, dead letter, transport SPI (JDK HTTP; OkHttp/Ktor adapters) |
-| `ilogger-otel` | OpenTelemetry: `traceId`/`spanId` correlation including inbound `traceparent`, events-as-spans export, engine + sink metrics into any OTel registry (API `compileOnly`) |
-| `ilogger-jul` | `java.util.logging` bridges: `JulLogHandler` into ILogger and `JulLogSink` out to JUL |
-| `ilogger-slf4j` | SLF4J/Logback bridges: `ILoggerAppender` into ILogger and `Slf4jLogSink` out to SLF4J, with MDC and key/value context |
-| `ilogger-ktor` | Ktor plugins: server request audit, outbound client audit, correlation/`traceparent` propagation |
-| `ilogger-android` | Android: Logcat sink, process-lifecycle flush, crash handoff, StrictMode-safe file sink, session actor, optional WorkManager shipping |
-| `ilogger-cli` | Audit tooling (application, not published): `tail`, `verify` hash chains, `export` CSV/JSON from JSONL or Room, `schema` registry inspection, `replay`/re-encrypt |
-| `ksp-tests` | Processor behavior tests: compiled KSP sources + JUnit assertions |
-| `ksp-diagnostics` | Negative diagnostics: intentionally invalid `@Log` fixtures, asserted verbatim |
-| `ksp-diagnostics-warnings` | Warning families: duplicate/undeclared actions, unused `@LogDao`, sensitive actor, suppression |
-| `ksp-diagnostics-options` | Opt-in rules: `require-actor` and `sink-categories`, plus compliant no-warning fixtures |
-| `examples/*` | Runnable feature walkthroughs (`basic`, `room`, `custom-sink`, `server`, `advanced-audit`, `gradle-plugin`) |
-| `:app` (reference app) | Full Android tour: Room + JSONL sinks, annotated repo/DAO, protection, engine lab, TestKit and copy-ready recipes |
-| `:benchmark` | JMH suite (kotlinx-benchmark) + deterministic harness for overhead measurement |
+- **Compile-time instrumentation.** `@Log` on the interface, not the
+  implementation. Generated `.logged()` adapters infer entity ids, cannot be
+  forgotten, and fail the build with a `Fix:` hint when an audit flow is
+  ambiguous. Strict mode turns instrumentation mistakes into build errors.
+- **Audit-grade events.** Every event can carry actor, entity, entity id,
+  outcome, failure, field changes, correlation and causation ids, category and
+  source, with schema/action versioning.
+- **Isolated, bounded delivery.** Each sink binding has its own pipeline
+  (`bufferSize`, `sinkConcurrency`, overflow policy). A slow or failing sink
+  cannot delay another, and every dropped delivery is reported with a reason,
+  counted in `stats()`, and optionally routed to a dead-letter sink.
+- **Production controls.** Sensitive-data policies and runtime redaction,
+  encryption at rest, hash-chained tamper evidence, retention/legal hold/erasure,
+  sampling, rate limiting and event-size limits.
+- **Integrations without coupling.** `ilogger-core` has no Android, Room, Ktor,
+  serialization or HTTP dependency; optional modules add each integration.
+- **Testable by design.** A deterministic `TestKit`, in-memory/failing/blocking/
+  chaos fakes, a reusable `LogSinkConformance` suite and a benchmark harness.
 
-The Android reference app is the fastest way to learn the library: every
-screen drives the real engine, and the Recipes screen contains copy-ready
-Gradle, Hilt, Room, Koin, Ktor, sink and testing snippets. See
-[docs/21-android-app-guide.md](docs/21-android-app-guide.md).
+## How it works
+
+1. **Declare actions and annotate a boundary** — an interface method, class or
+   top-level function.
+2. **KSP generates an adapter** at compile time; the event shape is validated
+   against the action registry and extracted values are type-checked.
+3. **Wrap the implementation** with `.logged(logger)`. Calls forward unchanged;
+   the adapter builds the event from the signature and ambient context, then
+   hands it to the engine for dispatch to every bound sink.
 
 ## Quick start
 
-Add the artifacts you need — published to **Maven Central**, group
-`io.github.mohamed-dev-ui`. The Gradle plugin wires KSP, the runtime, the
-annotations and the processor in one line:
+### 1. Apply the Gradle plugin
 
 ```toml
+# gradle/libs.versions.toml
 [versions]
 ilogger = "2.0.0"
 
@@ -82,6 +90,7 @@ ilogger = { id = "io.github.mohamed-dev-ui.ilogger", version.ref = "ilogger" }
 ```
 
 ```kotlin
+// module build.gradle.kts
 plugins {
     alias(libs.plugins.ilogger)
 }
@@ -89,80 +98,140 @@ plugins {
 ilogger {
     strict.set(true)   // recommended for application modules
 }
-
-// runtime — one sink for console during development
-val logger = ILogger.create { sink(ConsoleLogSink()) }
-val dao = InMemoryTaskRepository().logged(logger)
 ```
 
-Add the BOM for version-aligned optional integrations:
+The plugin applies KSP and adds the runtime, annotations and processor at the
+same version. Make sure `mavenCentral()` is visible to `pluginManagement` in
+the root `settings.gradle.kts`; the marker is published there. Manual and KMP
+setups are covered in [docs/03-ksp-setup.md](docs/03-ksp-setup.md).
+
+### 2. Annotate the operation
+
+```kotlin
+object TaskActions {
+    const val CREATED = "task.created"
+}
+
+interface TaskRepository {
+    @Log(action = TaskActions.CREATED, metadata = [LogMeta("task.title")])
+    suspend fun insert(task: Task): Long
+}
+
+class InMemoryTaskRepository : TaskRepository {
+    private var nextId = 0L
+    override suspend fun insert(task: Task): Long = ++nextId
+}
+```
+
+### 3. Wrap, then use
+
+```kotlin
+val logger = ILogger.create {
+    sink(ConsoleLogSink())            // add durable sinks as needed
+}
+
+val repository = InMemoryTaskRepository().logged(logger)
+
+withActor(Actor.user("u-42", name = "Grace")) {
+    repository.insert(Task(title = "Ship the release"))
+}
+```
+
+That call produces one structured event with no logging code in the
+implementation. `TestKit` proves the same flow in a test:
+
+```kotlin
+val kit = TestKit.create()
+val repository = InMemoryTaskRepository().logged(kit.logger)
+
+runBlocking { repository.insert(Task(title = "Ship the release")) }
+
+kit.sink.awaitCount(1)
+val event = kit.sink.events.single()
+assertEquals("task.created", event.action)
+```
+
+See [docs/02-quickstart.md](docs/02-quickstart.md) for the full walkthrough and
+[docs/18-testing.md](docs/18-testing.md) for deterministic assertions.
+
+## Artifacts
+
+All published artifacts share the group `io.github.mohamed-dev-ui` and the same
+version; the BOM aligns them without repeating versions.
 
 ```kotlin
 dependencies {
     implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
-    // implementation("io.github.mohamed-dev-ui:ilogger-testing")
-    // implementation("io.github.mohamed-dev-ui:ilogger-room")
-    // implementation("io.github.mohamed-dev-ui:ilogger-serialization")
-    // implementation("io.github.mohamed-dev-ui:ilogger-remote")
-    // implementation("io.github.mohamed-dev-ui:ilogger-jul")
-    // implementation("io.github.mohamed-dev-ui:ilogger-slf4j")
-    // implementation("io.github.mohamed-dev-ui:ilogger-ktor")
-    // implementation("io.github.mohamed-dev-ui:ilogger-otel")
+
+    implementation("io.github.mohamed-dev-ui:ilogger-core")
+    implementation("io.github.mohamed-dev-ui:ilogger-annotations")
+
+    // optional integrations — versions come from the BOM
+    implementation("io.github.mohamed-dev-ui:ilogger-room")
+    implementation("io.github.mohamed-dev-ui:ilogger-ktor")
+    implementation("io.github.mohamed-dev-ui:ilogger-remote")
+    implementation("io.github.mohamed-dev-ui:ilogger-otel")
+    // ...
 }
 ```
 
-`ilogger-cli` is a runnable application rather than a library, so it is not
-published to Maven: build the distribution with
-`./gradlew :ilogger-cli:installDist` (see [docs/36-cli.md](docs/36-cli.md)).
+| Artifact | Purpose |
+|---|---|
+| `ilogger-core` | Engine: `ILogger`, sinks, dispatch pipelines, ambient context |
+| `ilogger-annotations` | `@Log` and annotation contracts (zero dependencies) |
+| `ilogger-ksp` | KSP processor: generates `.logged()` adapters, DAO facades and DI bindings |
+| `ilogger-gradle-plugin` | Applies KSP, adds dependencies and exposes the `ilogger { }` DSL |
+| `ilogger-bom` | Version alignment for every published module (`java-platform`) |
+| `ilogger-testing` | `TestKit`, fakes, conformance suite and deterministic clock/ids |
+| `ilogger-room` | Room persistence, live queries, JSONL export/import, retention, cipher hook |
+| `ilogger-serialization` | `JsonEventCodec` for durable JSONL sinks |
+| `ilogger-remote` | Batched HTTP shipping: gzip, retries, file spool, circuit breaker |
+| `ilogger-jul` | `java.util.logging` bridges in both directions |
+| `ilogger-slf4j` | SLF4J/Logback bridges with MDC and key/value context |
+| `ilogger-otel` | OpenTelemetry traces, `traceparent` correlation and metrics |
+| `ilogger-ktor` | Server request audit, client audit and context propagation |
+| `ilogger-android` | Logcat sink, lifecycle flush, crash handoff, WorkManager shipping |
 
-Prefer manual wiring (KMP today, or explicit KSP control)? See
-[docs/03-ksp-setup.md](docs/03-ksp-setup.md).
+**Manual setup** (KMP or explicit KSP control): apply KSP yourself and declare
+`ilogger-annotations`, `ilogger-core` and `ksp("io.github.mohamed-dev-ui:ilogger-ksp")`.
+The Gradle plugin wires JVM and Android targets only.
 
-Full tour: [docs/01-overview.md](docs/01-overview.md) and
-[docs/02-quickstart.md](docs/02-quickstart.md). The complete topic set
-follows; every runtime claim below is exercised by a runnable example in
-`examples/*`.
+`ilogger-cli` is a runnable application, not a published library. Build its
+distribution with `./gradlew :ilogger-cli:installDist`; see
+[docs/36-cli.md](docs/36-cli.md).
 
-## CI & releases
+## Requirements
 
-- **CI** (`.github/workflows/ci.yml`) runs on every push to `main` and every
-  pull request: all JVM modules build & test (libraries, Gradle plugin,
-  KSP behavior tests, negative diagnostics, examples, benchmark) plus the
-  Android demo APK, and a `publishToMavenLocal` smoke run.
-- **Release** (`.github/workflows/release.yml`) runs when a `v*` tag is
-  pushed. It runs the JVM suite, **publishes every `ilogger-*` artifact
-  (including the Gradle plugin and marker) to Maven Central** (group
-  `io.github.mohamed-dev-ui`, automatic release after Central validation) and
-  to [GitHub Packages](https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger)
-  (`io.github.mohamed-dev-ui:<module>:<version>`), assembles the demo APK,
-  and attaches all jars + APK to a GitHub release with generated notes:
+| Component | Tested version |
+|---|---|
+| Kotlin / KSP | 2.2.10 / 2.3.12 |
+| Gradle | 9.6.0 |
+| JDK | 17 (all jars target Java 17 bytecode) |
+| Android | minSdk 28, compileSdk 37 |
 
-  ```bash
-  git tag -a v2.0.0 -m "ILogger v2.0.0"
-  git push origin v2.0.0
-  ```
-- **Changelog** lives in [CHANGELOG.md](CHANGELOG.md).
-- **Consuming artifacts from GitHub Packages** (requires a GitHub token —
-  Packages are always authenticated):
+JVM and Android are fully supported. Non-JVM Kotlin Multiplatform targets are
+not published yet. Newer toolchain versions usually work but are not claimed
+until CI covers them; the canonical matrix is
+[docs/38-compatibility.md](docs/38-compatibility.md).
 
-  ```kotlin
-  repositories {
-      mavenCentral()
-      maven {
-          name = "GitHubPackages"
-          url = uri("https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger")
-          credentials {
-              username = "<github-user>"
-              password = "<personal-access-token>"
-          }
-      }
-  }
-  ```
+## Documentation
 
-  Prefer no credentials? The same jars are attached to every GitHub release:
-  [releases/tag/v2.0.0](https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v2.0.0).
+Start with these:
 
-## Documentation (40 topics)
+| Guide | Contents |
+|---|---|
+| [01 — Overview & design](docs/01-overview.md) | Architecture, design priorities, event model |
+| [02 — Quickstart](docs/02-quickstart.md) | End-to-end setup in five minutes |
+| [03 — KSP setup](docs/03-ksp-setup.md) | Manual wiring, KMP and processor options |
+| [04 — `@Log` reference](docs/04-log-annotation-reference.md) | Every annotation attribute and default |
+| [11 — Actors & ambient context](docs/11-actors-and-ambient-context.md) | Actor attribution, correlation, causation |
+| [14 — Sinks](docs/14-sinks.md) | Console, file, Room, HTTP and custom sinks |
+| [18 — Testing](docs/18-testing.md) | `TestKit`, fakes and conformance testing |
+| [39 — Migrating to ILogger](docs/39-migration.md) | Adopting an existing codebase |
+| [40 — Cheatsheet](docs/40-cheatsheet.md) | The whole surface on one page |
+
+<details>
+<summary>All 40 documentation topics</summary>
 
 | # | Topic | # | Topic |
 |---|-------|---|-------|
@@ -194,11 +263,79 @@ follows; every runtime claim below is exercised by a runnable example in
 | | | 39 | [Migrating to ILogger](docs/39-migration.md) |
 | | | 40 | [Cheatsheet](docs/40-cheatsheet.md) |
 
-Where several implementations exist, each topic lists every option with a
-**🏆 Recommended** marker and a comparison table (simplicity, production
-cost, runtime overhead, development speed).
+</details>
+
+## Examples
+
+| Example | Demonstrates |
+|---|---|
+| `:examples:basic` | Annotations, console sink and generated adapters |
+| `:examples:room` | Room persistence and live audit queries |
+| `:examples:custom-sink` | A custom `LogSink` with delivery accounting |
+| `:examples:server` | Ktor server/client audit and trace propagation |
+| `:examples:advanced-audit` | Integrity, encryption, retention and compliance |
+| `:examples:gradle-plugin` | A consumer build using the published Gradle plugin |
+| `:app` | Android reference app: every screen drives the real engine, with copy-ready recipes |
+
+Run any JVM example with `./gradlew :examples:basic:run` (replace the module).
+The Android app builds with `./gradlew :app:assembleDebug`; a signed debug APK is
+attached to every GitHub release. The app guide is
+[docs/21-android-app-guide.md](docs/21-android-app-guide.md).
+
+## Releases
+
+- **Maven Central** is the primary distribution: every published module, the
+  Gradle plugin and its plugin marker.
+- **GitHub Packages** mirrors the same coordinates; authentication is required.
+- Every release attaches all jars, sources, javadocs, the API docs bundle and
+  the demo APK to the [latest GitHub release](https://github.com/Mohamed-Dev-UI/ILogger/releases/latest).
+- Release notes are maintained in [CHANGELOG.md](CHANGELOG.md).
+
+Publishing a release is driven by a version tag; the workflow runs the full JVM
+suite, publishes to Maven Central and GitHub Packages, and creates the release:
+
+```bash
+git tag -a v2.0.0 -m "ILogger v2.0.0"
+git push origin v2.0.0
+```
+
+<details>
+<summary>Consuming from GitHub Packages</summary>
+
+```kotlin
+repositories {
+    mavenCentral()
+    maven {
+        name = "GitHubPackages"
+        url = uri("https://maven.pkg.github.com/Mohamed-Dev-UI/ILogger")
+        credentials {
+            username = "<github-user>"
+            password = "<personal-access-token>"
+        }
+    }
+}
+```
+
+</details>
+
+## Building from source
+
+```bash
+./gradlew check                              # tests, API dumps, coverage floors
+./gradlew -p ilogger-gradle-plugin test      # Gradle plugin TestKit suite
+./gradlew :examples:basic:run                # a real consumer, end to end
+./gradlew :app:assembleDebug                 # Android reference app
+./gradlew dokkaGenerate                      # API documentation
+```
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR, run `./gradlew check`
+and the plugin TestKit suite; the quality gates and delivery pipeline are
+documented in
+[docs/29-delivery-and-quality-gates.md](docs/29-delivery-and-quality-gates.md).
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE). Every published artifact embeds
+Apache License 2.0 — see [LICENSE](LICENSE). Every published artifact carries
 the license metadata in its POM.

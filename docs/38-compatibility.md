@@ -9,7 +9,7 @@ until they are in this table.
 
 | Component | Version | Notes |
 |---|---|---|
-| Kotlin | 2.2.10 | Compiler, stdlib and KSP processor |
+| Kotlin | 2.2.10 | Library compiler, stdlib and KSP processor; the standalone Gradle-plugin build uses 2.4.21 |
 | KSP | 2.3.12 | Processor API; the Gradle plugin injects the matching library version |
 | KotlinPoet | 2.2.0 | Generated-code writer; cannot emit metadata newer than its Kotlin support |
 | Gradle | 9.6.0 | Wrapper version; plugin tested with the same |
@@ -27,11 +27,11 @@ until they are in this table.
 | kotlinx-serialization-json | 1.11.0 | runtime | `ilogger-serialization`, `ilogger-room`, `ilogger-remote`, `ilogger-cli` |
 | Room | 2.8.5 | `api` | `ilogger-room` (public callback/builder types) |
 | Ktor server/client core | 3.6.0 | `api` | `ilogger-ktor`; add your engine separately |
-| OpenTelemetry API | 1.43.0 | `compileOnly` | `ilogger-otel`; the host supplies the API + SDK |
-| SLF4J API / Logback | 2.0.17 / 1.5.18 | `compileOnly` | `ilogger-slf4j`; the host supplies its logging backend |
+| OpenTelemetry API | 1.67.0 | `compileOnly` | `ilogger-otel`; the host supplies the API + SDK |
+| SLF4J API / Logback | 2.0.20 / 1.5.18 | `compileOnly` | `ilogger-slf4j`; the host supplies its logging backend |
 | `java.util.logging` | JDK | built-in | `ilogger-jul` |
 | SQLite bundled | 2.7.1 | CLI runtime, Room tests | `ilogger-cli` reads Room files; not a library dependency |
-| OkHttp (tests only) | 4.12.0 | test | MockWebServer for `ilogger-remote` |
+| OkHttp (tests only) | 5.5.0 | test | MockWebServer for `ilogger-remote` |
 
 The BOM (`io.github.mohamed-dev-ui:ilogger-bom:2.0.0`) aligns every published
 ILogger module; it does not constrain third-party libraries.
