@@ -1,5 +1,5 @@
 [versions]
-kotlin = "2.2.10"
+kotlin = "2.4.21"
 ksp = "2.3.12"
 junit = "4.13.2"
 vanniktech = "0.37.0"
