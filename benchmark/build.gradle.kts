@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ksp)
@@ -39,5 +41,14 @@ benchmark {
         iterations = 2
         iterationTime = 1
         iterationTimeUnit = "s"
+    }
+}
+
+// The budget gate prints its measurements and reports them in its assertion
+// message; keep both in the build log so a run explains itself on Linux CI.
+tasks.withType<Test>().configureEach {
+    testLogging {
+        exceptionFormat = TestExceptionFormat.FULL
+        showStandardStreams = true
     }
 }

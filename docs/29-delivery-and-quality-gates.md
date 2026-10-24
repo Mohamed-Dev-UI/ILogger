@@ -10,7 +10,7 @@ this chapter is optional for a release pull request.
 | Tests | `.\gradlew.bat test` | Any test fails | yes |
 | API compatibility | `.\gradlew.bat apiCheck` | A published binary signature changed and the API dump was not updated | yes |
 | Coverage | `.\gradlew.bat koverVerify` | A module drops below its line-coverage floor | yes |
-| Benchmark budgets | `.\gradlew.bat :benchmark:test --tests benchmark.BudgetGateTest` with `ILOGGER_BENCH_GATE=true` | A producer path exceeds its median budget | dedicated CI job |
+| Benchmark budgets | `.\gradlew.bat :benchmark:test --tests benchmark.BudgetGateTest` with `ILOGGER_BENCH_GATE=true` | A producer path exceeds its budget in all three measurements | dedicated CI job |
 | Docs build | `.\gradlew.bat dokkaGenerate` | KDoc/Dokka generation fails | no (CI job) |
 | Reproducible archives | see [Reproducible builds](#reproducible-builds) | Two builds of the same jar differ | CI job |
 
