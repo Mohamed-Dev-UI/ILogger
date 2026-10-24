@@ -35,6 +35,7 @@ public class ILoggerPlugin : Plugin<Project> {
         ksp.arg(OPTION_SUPPRESS, extension.suppress.map { it.joinToString(",") })
         ksp.arg(OPTION_REQUIRE_ACTOR, extension.requireActor.map { it.toString() })
         ksp.arg(OPTION_SINK_CATEGORIES, extension.sinkCategories.map { it.joinToString(",") })
+        ksp.arg(OPTION_AUTO_CHANGES, extension.autoChanges.map { if (it) "all" else "off" })
 
         registerDiagnosticsTask(project)
 
@@ -111,6 +112,7 @@ public class ILoggerPlugin : Plugin<Project> {
         const val OPTION_SUPPRESS = "ilogger.suppress"
         const val OPTION_REQUIRE_ACTOR = "ilogger.require-actor"
         const val OPTION_SINK_CATEGORIES = "ilogger.sink-categories"
+        const val OPTION_AUTO_CHANGES = "ilogger.auto-changes"
     }
 }
 

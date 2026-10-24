@@ -37,6 +37,7 @@ ilogger {
     suppress.add("ILG035")             // module-wide diagnostic suppression
     requireActor.set(true)             // AUDIT ops must set @Log(actor = ...)
     sinkCategories.add("audit")        // categories that have a sink binding
+    autoChanges.set(true)              // auto-diff eligible entity fields
 }
 ```
 
@@ -51,6 +52,7 @@ ilogger {
 | `suppress` | empty | `ilogger.suppress` |
 | `requireActor` | `false` | `ilogger.require-actor` |
 | `sinkCategories` | empty (rule disabled) | `ilogger.sink-categories` |
+| `autoChanges` | `false` | `ilogger.auto-changes` |
 
 `disabledVariants` accepts variant tokens (`debug`, `release`, `test`) or
 exact KSP task names. The opt-out is scoped to the matching KSP task, so other
@@ -133,6 +135,7 @@ and for teams that prefer explicit coordinates.
 | `ilogger.suppress` | *(empty)* | comma-separated codes suppressed for the whole module, e.g. `"ILG035,ILG061"`. Per-symbol `@Suppress("ILGxxx")` works without this option |
 | `ilogger.require-actor` | `false` | warns (ILG020) when an AUDIT operation has no explicit `@Log(actor = ...)` and depends on ambient attribution |
 | `ilogger.sink-categories` | *(empty)* | comma-separated categories that have a sink binding. When non-empty, `@Log` categories outside the set warn (ILG021); empty disables the rule |
+| `ilogger.auto-changes` | `off` | module-wide default for `@Log(autoChanges = AutoChanges.DEFAULT)`: `all` captures every eligible changed field, `off` records only explicit `LogChange` entries. Operations whose signature provides no before/after pair are skipped, so enabling it globally is safe; `@Log(autoChanges = OFF)` opts out per call |
 
 ```kotlin
 ksp {

@@ -43,6 +43,8 @@ internal class OpParser(
     private val requireActor: Boolean = false,
     /** Categories with a sink binding (`ilogger.sink-categories`); empty disables the check. */
     private val sinkCategories: Set<String> = emptySet(),
+    /** Module-wide default for `@Log(autoChanges = DEFAULT)` (`ilogger.auto-changes`). */
+    private val autoChangesDefault: Boolean = false,
 ) {
 
     private fun error(code: Diagnostic, message: String, symbol: Any) = report(code, message, symbol)
@@ -366,6 +368,27 @@ internal class OpParser(
         // expressions resolve special heads first, and codegen names its
         // locals so user parameter names cannot collide (G-19).
 
+        // ---- auto changes decision -------------------------------------------------
+        // Resolved before entity-id inference: for the two-parameter shape the
+        // "after" object is the current entity and supplies the inferred id.
+        val explicitAutoChanges = annotation.arg("autoChanges")?.let { enumConstantName(it) }
+        if (explicitAutoChanges != null && explicitAutoChanges !in AUTO_CHANGES_MODES) {
+            error(
+                Diagnostic.LOG_FIELD_VALUE,
+                "@Log(autoChanges = $explicitAutoChanges) is invalid: use AutoChanges.DEFAULT, OFF or ALL.\n" +
+                    "Fix: remove the override (DEFAULT inherits the module setting) or pick OFF/ALL.",
+                fn,
+            )
+            return null
+        }
+        val autoRequired = explicitAutoChanges == "ALL"
+        val autoEnabled = when (explicitAutoChanges) {
+            "ALL" -> true
+            "OFF" -> false
+            else -> autoChangesDefault
+        }
+        val autoPair = if (autoEnabled) inferAutoPair(parameters, returnType, flowReturn) else null
+
         // ---- entity ----------------------------------------------------------------
         val explicitEntityArg = annotation.arg("entity") as? KSType
         val explicitEntity = explicitEntityArg?.takeIf { !Ks.isNotSuppliedType(it) }
@@ -425,7 +448,11 @@ internal class OpParser(
             }
             parsed
         } else {
-            val inferred = inferEntityId(parameters, returnType, fn, roomKind) ?: return null
+            // The auto-captured "after" object is the current entity, so its id
+            // is the event's entity id (a generated id on insert included).
+            val inferred = autoEntityId(autoPair)
+                ?: inferEntityId(parameters, returnType, fn, roomKind)
+                ?: return null
             if (inferred.isChain) {
                 validateChain(inferred, parameters, returnType, SensitiveMode.ID, fn) ?: return null
             }
@@ -721,7 +748,33 @@ internal class OpParser(
                     }
                 }
             }
-            changes.add(ResolvedChange(field = field, before = from, after = to))
+            changes.add(
+                ResolvedChange(
+                    field = field,
+                    before = from,
+                    after = to,
+                    onlyIfChanged = entry.arg("onlyIfChanged") as? Boolean == true,
+                ),
+            )
+        }
+
+        // ---- auto changes ------------------------------------------------------------------
+        if (autoEnabled) {
+            val auto = if (autoPair != null) {
+                buildAutoChanges(
+                    entityType = autoPair.entityType,
+                    beforeSource = autoPair.before,
+                    afterSource = autoPair.after,
+                    parameters = parameters,
+                    returnType = returnType,
+                    explicitFields = fieldsSeen,
+                    required = autoRequired,
+                    fn = fn,
+                ) ?: return null
+            } else {
+                autoShapeError(autoRequired, fn) ?: return null
+            }
+            changes.addAll(auto)
         }
 
         // Flow-returning functions emit start/terminal events only: there is no
@@ -784,6 +837,181 @@ internal class OpParser(
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /** Where an auto-captured field's before/after values come from. */
+    private sealed class AutoSource {
+        abstract fun expr(field: String): ResolvedExpr
+
+        class Parameter(val index: Int, val name: String) : AutoSource() {
+            override fun expr(field: String): ResolvedExpr =
+                ResolvedExpr.Param(index, name, listOf(field))
+        }
+
+        object Result : AutoSource() {
+            override fun expr(field: String): ResolvedExpr = ResolvedExpr.Result(listOf(field))
+        }
+    }
+
+    private class AutoPair(
+        val entityType: KSType,
+        val before: AutoSource,
+        val after: AutoSource,
+    )
+
+    /** Entity id selected from the auto pair's "after" object, when it has one. */
+    private fun autoEntityId(pair: AutoPair?): ResolvedExpr? {
+        if (pair == null) return null
+        val declaration = pair.entityType.declaration as? KSClassDeclaration ?: return null
+        val idProperty = Ks.idPropertyOf(declaration) ?: return null
+        val id = idProperty.simpleName.asString()
+        return when (val after = pair.after) {
+            is AutoSource.Parameter -> ResolvedExpr.Param(after.index, after.name, listOf(id))
+            AutoSource.Result -> ResolvedExpr.Result(listOf(id))
+        }
+    }
+
+    /**
+     * Infers the before/after objects for automatic capture.
+     *
+     * Accepted shapes: two eligible parameters of the same entity type (first
+     * is before, second is after), or one eligible entity parameter plus an
+     * entity-typed return value. Ambiguous or unsupported signatures return
+     * null; the caller decides whether that is an error (explicit ALL) or a
+     * silent skip (module-wide default), so enabling it globally cannot break
+     * unrelated reads/deletes.
+     */
+    private fun inferAutoPair(
+        parameters: List<ParameterModel>,
+        returnType: KSType,
+        flowReturn: Boolean,
+    ): AutoPair? {
+        val eligible = parameters.filter {
+            !it.vararg && !it.excluded && !it.sensitive && isDiffableEntityType(it.type)
+        }
+
+        val pairGroups = eligible.groupBy { typeKey(it.type) }.values.filter { it.size >= 2 }
+        if (pairGroups.size > 1) return null
+        val pair = pairGroups.firstOrNull()
+        if (pair != null) {
+            if (pair.size > 2) return null
+            return AutoPair(
+                entityType = pair[0].type,
+                before = AutoSource.Parameter(pair[0].index, pair[0].name),
+                after = AutoSource.Parameter(pair[1].index, pair[1].name),
+            )
+        }
+
+        val resultType = if (!flowReturn && !Ks.isUnit(returnType)) {
+            Ks.unwrapResult(returnType).first
+        } else {
+            null
+        }
+        if (resultType != null && isDiffableEntityType(resultType)) {
+            val matches = eligible.filter { typeKey(it.type) == typeKey(resultType) }
+            if (matches.size == 1) {
+                return AutoPair(
+                    entityType = resultType,
+                    before = AutoSource.Parameter(matches[0].index, matches[0].name),
+                    after = AutoSource.Result,
+                )
+            }
+        }
+        return null
+    }
+
+    private fun autoShapeError(required: Boolean, fn: KSFunctionDeclaration): List<ResolvedChange>? {
+        if (!required) return emptyList()
+        error(
+            Diagnostic.CHANGE_CONTRACT,
+            "Cannot auto-capture changes for '${fn.simpleName.asString()}': the signature provides no single " +
+                "before/after entity pair.\n" +
+                "Fix: declare two parameters of the same entity type (before first, after second), or take one " +
+                "entity parameter and return that entity type; otherwise set autoChanges = OFF and select fields " +
+                "with changes = [LogChange(...)].",
+            fn,
+        )
+        return null
+    }
+
+    private fun buildAutoChanges(
+        entityType: KSType,
+        beforeSource: AutoSource,
+        afterSource: AutoSource,
+        parameters: List<ParameterModel>,
+        returnType: KSType,
+        explicitFields: Set<String>,
+        required: Boolean,
+        fn: KSFunctionDeclaration,
+    ): List<ResolvedChange>? {
+        val declaration = entityType.declaration as? KSClassDeclaration
+        if (declaration == null) {
+            return autoShapeError(required, fn)
+        }
+        val properties = declaration.getAllProperties()
+            .distinctBy { it.simpleName.asString() }
+            .filter { it.simpleName.asString() !in explicitFields && isAutoCandidate(it) }
+            .sortedBy { it.simpleName.asString() }
+            .toList()
+        if (properties.isEmpty()) {
+            if (required && explicitFields.isEmpty()) {
+                error(
+                    Diagnostic.CHANGE_CONTRACT,
+                    "No auto-capturable fields remain on '${Ks.simpleName(entityType)}': every property is " +
+                        "private, non-loggable, @LogSensitive or @LogExclude.\n" +
+                        "Fix: use explicit changes with non-sensitive loggable values, or remove autoChanges = ALL.",
+                    fn,
+                )
+                return null
+            }
+            return emptyList()
+        }
+
+        val result = ArrayList<ResolvedChange>(properties.size)
+        for (property in properties) {
+            val field = property.simpleName.asString()
+            val before = beforeSource.expr(field)
+            val after = afterSource.expr(field)
+            val beforeInfo = validateChain(before, parameters, returnType, SensitiveMode.CHANGE, fn)
+                ?: return null
+            val afterInfo = validateChain(after, parameters, returnType, SensitiveMode.CHANGE, fn)
+                ?: return null
+            if (!Ks.isLoggableValueType(beforeInfo.terminal) || !Ks.isLoggableValueType(afterInfo.terminal)) {
+                continue
+            }
+            result += ResolvedChange(field, before, after, onlyIfChanged = true)
+        }
+        return result
+    }
+
+    private fun isAutoCandidate(property: KSPropertyDeclaration): Boolean {
+        if (property.modifiers.any { it == Modifier.PRIVATE || it == Modifier.PROTECTED }) return false
+        if (Ks.isExcluded(property) || Ks.isSensitive(property)) return false
+        if (Ks.suspiciousName(property.simpleName.asString())) return false
+        val type = property.type.resolve()
+        if (type.isError || Ks.isSensitiveType(type) || Ks.isExcludedType(type)) return false
+        return Ks.isLoggableValueType(type)
+    }
+
+    private fun isDiffableEntityType(type: KSType): Boolean {
+        if (type.isError) return false
+        if (Ks.unwrapCollection(type).second || Ks.isArrayType(type)) return false
+        return Ks.domainCandidate(type, domainPackages) != null
+    }
+
+    /** Structural key used to pair parameters/result while ignoring nullability. */
+    private fun typeKey(type: KSType): String {
+        val base = Ks.fqnOfType(type)
+        if (type.arguments.isEmpty()) return base
+        return buildString {
+            append(base)
+            append('<')
+            type.arguments.forEachIndexed { index, argument ->
+                if (index > 0) append(',')
+                append(argument.type?.resolve()?.let { Ks.fqnOfType(it) } ?: "*")
+            }
+            append('>')
+        }
+    }
 
     /**
      * Walks the chain, reporting missing properties, exclusions and sensitive
@@ -1327,6 +1555,7 @@ internal class OpParser(
         val LOG_LEVELS = setOf("TRACE", "DEBUG", "INFO", "WARN", "ERROR", "AUDIT")
         val DISPATCH_MODES = setOf("DEFAULT", "INLINE", "ASYNC", "BUFFERED")
         val SENSITIVE_MODES = setOf("DENY", "OMIT", "MASK", "HASH")
+        val AUTO_CHANGES_MODES = setOf("DEFAULT", "OFF", "ALL")
         val INSERT_SHAPED = Regex("^(insert|create|add|register)", RegexOption.IGNORE_CASE)
     }
 }

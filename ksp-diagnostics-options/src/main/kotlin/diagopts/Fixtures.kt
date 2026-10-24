@@ -36,3 +36,12 @@ interface DeterministicAudit {
     @Log(action = "task.locked", entityId = "'fixed'", actor = "requester", category = "security")
     suspend fun lock(requester: String)
 }
+
+/**
+ * `ilogger.auto-changes = all`: the call leaves `autoChanges` at DEFAULT, so
+ * the module-wide setting supplies the before/after capture.
+ */
+interface GlobalAutoChanges {
+    @Log(action = "task.renamed")
+    suspend fun rename(oldTask: Task, newTask: Task): Boolean
+}

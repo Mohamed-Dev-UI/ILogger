@@ -77,6 +77,14 @@ import kotlin.reflect.KClass
  * @param changes Explicitly selected before/after value pairs ([LogChange]).
  *   ILogger never queries a database to compute diffs; the caller provides
  *   the "before" values if change tracking is required.
+ * @param autoChanges Automatic before/after capture for every eligible entity
+ *   property ([AutoChanges]). [AutoChanges.DEFAULT] follows the module-wide
+ *   `ilogger.auto-changes` setting (off by default). [AutoChanges.ALL]
+ *   requires either two parameters of the same entity type (first = before,
+ *   second = after; its id becomes the event entity id) or one entity
+ *   parameter with an entity-typed return value. Only fields that actually
+ *   changed are recorded; sensitive, excluded and riskily named properties
+ *   are skipped.
  * @param before Also emit a start event *before* the operation runs
  *   (outcome `START`). Useful for operations that may crash the process.
  * @param onSuccess Emit the success event after the operation completes
@@ -117,6 +125,7 @@ public annotation class Log(
     public val dispatch: DispatchMode = DispatchMode.DEFAULT,
     public val metadata: Array<LogMeta> = [],
     public val changes: Array<LogChange> = [],
+    public val autoChanges: AutoChanges = AutoChanges.DEFAULT,
     public val before: Boolean = false,
     public val onSuccess: Boolean = true,
     public val onFailure: Boolean = false,

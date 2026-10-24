@@ -8,7 +8,7 @@ Deliberate constraints — each is a design decision, not a missing feature.
 |---|---|
 | No network shipping in core | transport lives in the optional `ilogger-remote` module; core stays dependency-free ([33](33-remote-sink.md)) |
 | No runtime reflection anywhere | compile-time proof is the product; reflection would erase the guarantees |
-| No database diffs | `LogChange` from/to takes caller-provided values — DB diffs would be slow + wrong |
+| No database diffs | `LogChange` and `autoChanges` compare caller-provided objects only — never a stored row; DB diffs would be slow + wrong |
 | No thread-local actor leak into coroutines | suspend vs non-suspend context split is documented and total ([05](05-event-lifecycle.md)) |
 | No automatic module adoption | Room/Ktor/serialization are opt-in modules; core fabric stays framework-free |
 | No unbounded buffers | every async pipeline has `bufferSize` and an explicit overflow policy |

@@ -72,6 +72,15 @@ public abstract class ILoggerExtension {
      */
     public abstract val sinkCategories: SetProperty<String>
 
+    /**
+     * Module-wide default for `@Log(autoChanges = AutoChanges.DEFAULT)`.
+     * `true` captures every eligible entity field before/after for operations
+     * whose signature provides a before/after pair; `false` requires explicit
+     * `changes = [LogChange(...)]` or `@Log(autoChanges = ALL)`. Defaults to
+     * `false`.
+     */
+    public abstract val autoChanges: Property<Boolean>
+
     init {
         enabled.convention(true)
         strict.convention(false)
@@ -81,5 +90,6 @@ public abstract class ILoggerExtension {
         suppress.convention(emptySet())
         requireActor.convention(false)
         sinkCategories.convention(emptySet())
+        autoChanges.convention(false)
     }
 }

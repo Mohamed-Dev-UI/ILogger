@@ -1,5 +1,6 @@
 package diag
 
+import io.ilogger.annotations.AutoChanges
 import io.ilogger.annotations.DispatchMode
 import io.ilogger.annotations.Log
 import io.ilogger.annotations.LogActions
@@ -250,4 +251,14 @@ interface ExtractorInjectWithoutExtractor {
         metadata = [LogMeta("row.title", inject = true)],
     )
     suspend fun touch(row: Row): Long
+}
+
+/**
+ * Explicit auto-capture needs a provable before/after entity pair: neither
+ * an entity parameter nor an entity result exists here.
+ */
+interface AutoChangesShape {
+    // EXPECTED: Cannot auto-capture changes for 'rename'
+    @Log(action = "row.renamed", autoChanges = AutoChanges.ALL)
+    suspend fun rename(id: Long, title: String): String
 }

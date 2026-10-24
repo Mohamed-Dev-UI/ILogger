@@ -33,8 +33,16 @@ interface TaskRepository {
         changes = [LogChange(field = "status", from = "old.status", to = "new.status")],
     )
     suspend fun create(taskId: String, title: String, old: Task, new: Task): Task
+
+    @Log(action = TASK_RENAMED, autoChanges = AutoChanges.ALL)
+    suspend fun rename(old: Task, updated: Task): Boolean  // diffs eligible fields
 }
 ```
+
+- `onlyIfChanged = true` on a `LogChange` drops the pair when both values are
+  equal; `autoChanges = ALL` records every eligible changed field. Both are
+  off per call unless requested; `ilogger { autoChanges.set(true) }` makes
+  auto-capture the module default ([04](04-log-annotation-reference.md)).
 
 - `@Log` works on interfaces/classes/functions; the processor generates
   `.logged(logger)`. `@NoLog` opts out, and class-level defaults come from

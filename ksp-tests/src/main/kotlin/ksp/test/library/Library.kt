@@ -1,10 +1,12 @@
 package ksp.test.library
 
+import io.ilogger.annotations.AutoChanges
 import io.ilogger.annotations.DispatchMode
 import io.ilogger.annotations.Log
 import io.ilogger.annotations.LogActions
 import io.ilogger.annotations.LogChange
 import io.ilogger.annotations.LogConfig
+import io.ilogger.annotations.LogExclude
 import io.ilogger.annotations.LogLevel
 import io.ilogger.annotations.LogMeta
 import io.ilogger.annotations.LogSensitive
@@ -80,6 +82,11 @@ enum class TaskStatus { OPEN, DONE, CLOSED }
     TaskActions.UNSAFE_SUMMARY,
     TaskActions.THROWING_SUMMARY,
     TaskActions.OBJECT_SUMMARY,
+    TaskActions.UPDATED_IF_CHANGED,
+    TaskActions.AUTO_UPDATED,
+    TaskActions.AUTO_SAVED,
+    TaskActions.AUTO_MERGED,
+    TaskActions.ACCOUNT_RENAMED,
 )
 object TaskActions {
     const val CREATED = "task.created"
@@ -126,6 +133,11 @@ object TaskActions {
     const val UNSAFE_SUMMARY = "task.unsafeSummary"
     const val THROWING_SUMMARY = "task.throwingSummary"
     const val OBJECT_SUMMARY = "task.objectSummary"
+    const val UPDATED_IF_CHANGED = "task.updatedIfChanged"
+    const val AUTO_UPDATED = "task.autoUpdated"
+    const val AUTO_SAVED = "task.autoSaved"
+    const val AUTO_MERGED = "task.autoMerged"
+    const val ACCOUNT_RENAMED = "account.renamed"
 }
 
 /**
@@ -220,6 +232,48 @@ interface TaskRepository {
     suspend fun cancelLogged(taskId: Long)
 
     suspend fun passthrough(value: Int): Int
+}
+
+/**
+ * Entity whose non-eligible properties must never reach auto-captured
+ * changes: sensitive, excluded, and riskily named values.
+ */
+class Account(
+    val id: Long,
+    val name: String,
+    val plan: String,
+    @LogSensitive val email: String,
+    @LogExclude val internalNote: String,
+    val sessionKey: String,
+)
+
+/**
+ * Change capture: `onlyIfChanged` filters equal pairs; `autoChanges` diffs
+ * every eligible entity property; explicit `LogChange` entries always win.
+ */
+interface ChangeTrackingRepo {
+
+    @Log(
+        action = TaskActions.UPDATED_IF_CHANGED,
+        changes = [LogChange(field = "title", from = "task.title", to = "newTitle", onlyIfChanged = true)],
+    )
+    suspend fun updateIfChanged(task: Task, newTitle: String): Boolean
+
+    @Log(action = TaskActions.AUTO_UPDATED, autoChanges = AutoChanges.ALL)
+    suspend fun autoUpdate(oldTask: Task, updatedTask: Task): Boolean
+
+    @Log(action = TaskActions.AUTO_SAVED, autoChanges = AutoChanges.ALL)
+    suspend fun autoSave(task: Task): Task
+
+    @Log(
+        action = TaskActions.AUTO_MERGED,
+        autoChanges = AutoChanges.ALL,
+        changes = [LogChange(field = "title", from = "oldTask.title", to = "updatedTask.title")],
+    )
+    suspend fun autoUpdateWithExplicit(oldTask: Task, updatedTask: Task): Boolean
+
+    @Log(action = TaskActions.ACCOUNT_RENAMED, autoChanges = AutoChanges.ALL)
+    suspend fun renameAccount(oldAccount: Account, updatedAccount: Account): Boolean
 }
 
 /**

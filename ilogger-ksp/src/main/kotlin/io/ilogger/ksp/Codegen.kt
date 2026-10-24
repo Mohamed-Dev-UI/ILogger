@@ -69,6 +69,8 @@ internal object Codegen {
         val logger: String = pick("logger")
         val upstream: String = pick("iloggerUpstream")
         val cause: String = pick("iloggerCause")
+        val changeBefore: String = pick("iloggerChangeBefore")
+        val changeAfter: String = pick("iloggerChangeAfter")
     }
 
     private val ILogger_TYPE = ClassName("io.ilogger.core", "ILogger")
@@ -660,17 +662,34 @@ internal object Codegen {
         // Changes are recorded on success only: START has no after-values yet and
         // FAILURE would misrepresent an unapplied change as applied.
         if (kind == EventKind.SUCCESS && op.changes.isNotEmpty()) {
-            block.add("changes = listOf(\n").indent()
+            block.add("changes = listOfNotNull(\n").indent()
             for (change in op.changes) {
                 val before = renderValue(change.before, op, RenderPurpose.PLAIN, extractorFields, locals)
                 val after = renderValue(change.after, op, RenderPurpose.PLAIN, extractorFields, locals)
-                block.add(
-                    "%T(field = %S, before = %L, after = %L),\n",
-                    FIELD_CHANGE_TYPE,
-                    change.field,
-                    before,
-                    after,
-                )
+                if (change.onlyIfChanged) {
+                    // A scoped block lets both expressions evaluate once even
+                    // when they read the result or a mutable property.
+                    block.add("run {\n").indent()
+                    block.addStatement("val %L = %L", locals.changeBefore, before)
+                    block.addStatement("val %L = %L", locals.changeAfter, after)
+                    block.add(
+                        "if (%L) %T(field = %S, before = %L, after = %L) else null\n",
+                        changedComparison(change, op, locals),
+                        FIELD_CHANGE_TYPE,
+                        change.field,
+                        locals.changeBefore,
+                        locals.changeAfter,
+                    )
+                    block.unindent().add("},\n")
+                } else {
+                    block.add(
+                        "%T(field = %S, before = %L, after = %L),\n",
+                        FIELD_CHANGE_TYPE,
+                        change.field,
+                        before,
+                        after,
+                    )
+                }
             }
             block.unindent().add("),\n")
         }
@@ -744,6 +763,33 @@ internal object Codegen {
     }
 
     private enum class RenderPurpose { ID, ACTOR_ID, PLAIN, MASK, HASH }
+
+    private fun changedComparison(
+        change: ResolvedChange,
+        op: ResolvedOp,
+        locals: LocalNames,
+    ): CodeBlock {
+        val terminal = terminalType(change.before, op)
+        return if (terminal != null && Ks.isArrayType(terminal)) {
+            CodeBlock.of("!(%L contentEquals %L)", locals.changeBefore, locals.changeAfter)
+        } else {
+            CodeBlock.of("%L != %L", locals.changeBefore, locals.changeAfter)
+        }
+    }
+
+    private fun terminalType(expr: ResolvedExpr, op: ResolvedOp): KSType? {
+        val info = when (expr) {
+            is ResolvedExpr.Param -> expr.chainInfo
+            is ResolvedExpr.Result -> expr.chainInfo
+            else -> null
+        }
+        info?.properties?.lastOrNull()?.let { return it.type.resolve() }
+        return when (expr) {
+            is ResolvedExpr.Param -> op.parameters.getOrNull(expr.index)?.type
+            is ResolvedExpr.Result -> Ks.unwrapResult(op.returnType).first
+            else -> null
+        }
+    }
 
     /**
      * Renders a compile-time-validated value expression to generated Kotlin.

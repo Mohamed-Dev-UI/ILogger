@@ -17,6 +17,7 @@ Complete signature (defaults shown):
     dispatch: DispatchMode = DispatchMode.DEFAULT,
     metadata: Array<LogMeta> = [],
     changes: Array<LogChange> = [],
+    autoChanges: AutoChanges = AutoChanges.DEFAULT, // DEFAULT | OFF | ALL
     before: Boolean = false,     // also emit a START event
     onSuccess: Boolean = true,
     onFailure: Boolean = false,  // emit failure event on throw
@@ -47,7 +48,21 @@ Complete signature (defaults shown):
   application configuration). `INLINE` + processor-generated `recordNow`
   (non-suspend function) is a compile error.
 - **`metadata` / `changes`** — explicit value selections; nothing else is
-  captured.
+  captured unless auto-capture is enabled. A `LogChange` pair is always
+  recorded; set `onlyIfChanged = true` to omit it when both values are equal.
+- **`autoChanges`** — automatic before/after capture for every eligible
+  entity property in addition to explicit `changes`. `DEFAULT` follows the
+  module-wide `ilogger.auto-changes` / `ilogger { autoChanges }` setting
+  (off by default), `OFF` disables it for this operation, `ALL` enables it.
+  The before/after objects are inferred from the signature: two eligible
+  parameters of the same entity type (first = before, second = after; its
+  id is the inferred entity id), or one entity parameter plus an
+  entity-typed return value. Only changed fields are emitted, sorted by
+  name; sensitive, excluded and riskily named properties are skipped, and
+  explicit `changes` entries win for their field. No database read is
+  performed — the caller supplies both states. With an explicit `ALL`, an
+  unsupported signature is a compile error; inherited from the module
+  setting, it is skipped so unrelated operations keep compiling.
 - **`before`** — also records a START event before invoking the delegate:
   useful for may-crash operations. The START event cannot carry result-derived
   values (there is no result yet).
@@ -129,6 +144,12 @@ LogMeta("task.passwordHash", sensitive = SensitiveHandling.HASH)         // expl
 LogMeta("task.token", sensitive = SensitiveHandling.OMIT)                // no key at all
 
 LogChange(field = "title", from = "task.title", to = "newTitle")  // before→after pair
+LogChange(field = "title", from = "task.title", to = "newTitle",
+          onlyIfChanged = true)                    // skip the pair when equal
+
+AutoChanges.ALL                                   // auto-diff eligible fields
+AutoChanges.OFF                                   // explicit changes only
+AutoChanges.DEFAULT                               // inherit the module setting
 
 @LogDao                             // interface-level: opt into the generated
 @Dao interface TaskDao { ... }      // <Database>.logged(logger) facade
@@ -186,6 +207,17 @@ suspend fun insert(task: Task): Long                       // entity+id from sig
 
 @Log(action = TaskActions.UPDATED, changes = [LogChange(field = "title", from = "task.title", to = "newTitle")])
 suspend fun update(task: Task, newTitle: String): Boolean
+
+@Log(action = TaskActions.COUNTED, changes = [LogChange(
+    field = "count", from = "task.count", to = "newCount", onlyIfChanged = true,
+)])
+suspend fun recount(task: Task, newCount: Int): Boolean   // no pair when equal
+
+@Log(action = TaskActions.UPDATED, autoChanges = AutoChanges.ALL)
+suspend fun update(oldTask: Task, updatedTask: Task): Boolean  // diffs both objects
+
+@Log(action = TaskActions.SAVED, autoChanges = AutoChanges.ALL)
+suspend fun save(task: Task): Task                        // before param, after result
 
 @Log(action = TaskActions.DELETED, before = true)          // START + SUCCESS events
 suspend fun delete(task: Task)

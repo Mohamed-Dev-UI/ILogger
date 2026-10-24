@@ -38,8 +38,10 @@ START (before)  →  delegate runs  →  SUCCESS (after)
   name, message, root cause type, capped stack summary — no raw throwable in
   metadata) **and the exception is rethrown unchanged**: failure events never
   swallow exceptions.
-- Changes (`LogChange`) are recorded **on `SUCCESS` only** — a "before→after"
-  pair cannot be trusted mid-crash.
+- Changes (`LogChange`, and auto-captured fields) are recorded **on `SUCCESS`
+  only** — a "before→after" pair cannot be trusted mid-crash. Auto-captured
+  pairs are filtered to fields that actually changed, and explicit
+  `onlyIfChanged` pairs are omitted when both values are equal.
 
 ## Suspend vs non-suspend paths
 

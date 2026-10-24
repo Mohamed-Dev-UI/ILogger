@@ -1,3 +1,12 @@
+public final class io/ilogger/annotations/AutoChanges : java/lang/Enum {
+	public static final field ALL Lio/ilogger/annotations/AutoChanges;
+	public static final field DEFAULT Lio/ilogger/annotations/AutoChanges;
+	public static final field OFF Lio/ilogger/annotations/AutoChanges;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lio/ilogger/annotations/AutoChanges;
+	public static fun values ()[Lio/ilogger/annotations/AutoChanges;
+}
+
 public final class io/ilogger/annotations/DispatchMode : java/lang/Enum {
 	public static final field ASYNC Lio/ilogger/annotations/DispatchMode;
 	public static final field BUFFERED Lio/ilogger/annotations/DispatchMode;
@@ -11,6 +20,7 @@ public final class io/ilogger/annotations/DispatchMode : java/lang/Enum {
 public abstract interface annotation class io/ilogger/annotations/Log : java/lang/annotation/Annotation {
 	public abstract fun action ()Ljava/lang/String;
 	public abstract fun actor ()Ljava/lang/String;
+	public abstract fun autoChanges ()Lio/ilogger/annotations/AutoChanges;
 	public abstract fun before ()Z
 	public abstract fun category ()Ljava/lang/String;
 	public abstract fun changes ()[Lio/ilogger/annotations/LogChange;
@@ -35,6 +45,7 @@ public abstract interface annotation class io/ilogger/annotations/LogActions : j
 public abstract interface annotation class io/ilogger/annotations/LogChange : java/lang/annotation/Annotation {
 	public abstract fun field ()Ljava/lang/String;
 	public abstract fun from ()Ljava/lang/String;
+	public abstract fun onlyIfChanged ()Z
 	public abstract fun to ()Ljava/lang/String;
 }
 

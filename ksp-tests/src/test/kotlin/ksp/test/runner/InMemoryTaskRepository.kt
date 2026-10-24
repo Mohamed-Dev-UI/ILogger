@@ -1,5 +1,7 @@
 package ksp.test.runner
 
+import ksp.test.library.Account
+import ksp.test.library.ChangeTrackingRepo
 import ksp.test.library.ReservedNamesRepository
 import ksp.test.library.Task
 import ksp.test.library.TaskRepository
@@ -46,6 +48,20 @@ class InMemoryTaskRepository : TaskRepository {
     override suspend fun inlineDelete(task: Task) {}
 
     override suspend fun passthrough(value: Int): Int = value + 1
+}
+
+class InMemoryChangeTrackingRepo : ChangeTrackingRepo {
+
+    override suspend fun updateIfChanged(task: Task, newTitle: String): Boolean = true
+
+    override suspend fun autoUpdate(oldTask: Task, updatedTask: Task): Boolean = true
+
+    override suspend fun autoSave(task: Task): Task =
+        task.copy(id = task.id + 1, title = "saved ${task.title}")
+
+    override suspend fun autoUpdateWithExplicit(oldTask: Task, updatedTask: Task): Boolean = true
+
+    override suspend fun renameAccount(oldAccount: Account, updatedAccount: Account): Boolean = true
 }
 
 class InMemoryReservedNamesRepository : ReservedNamesRepository {

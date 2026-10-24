@@ -139,6 +139,12 @@ internal object Ks {
         "kotlin.UIntArray", "kotlin.ULongArray", "kotlin.UShortArray", "kotlin.UByteArray",
     )
 
+    /** True for `Array<T>` and the primitive array types (nullable or not). */
+    fun isArrayType(type: KSType): Boolean {
+        val fqn = fqnOfType(type)
+        return fqn.startsWith("kotlin.Array") || fqn in primitiveArrayTypes
+    }
+
     /** Loggable metadata value types: scalars, enums, one-level lists/arrays/maps of those, value classes and Result. */
     fun isLoggableValueType(type: KSType): Boolean {
         if (type.isError) return false

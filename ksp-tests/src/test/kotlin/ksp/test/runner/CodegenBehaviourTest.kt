@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.coroutines.cancellation.CancellationException
 import ksp.test.generated.GeneratedRepository
 import ksp.test.generated.logged
+import ksp.test.library.Account
 import ksp.test.library.Archive_ILogger
 import ksp.test.library.AuditedCounter_ILogger
 import ksp.test.library.AuditedTaskBase_ILogger
@@ -199,6 +200,103 @@ class CodegenBehaviourTest {
             assertEquals("title", change.field)
             assertEquals("old title", change.before)
             assertEquals("new title", change.after)
+        }
+    }
+
+    @Test
+    fun `onlyIfChanged omits an unchanged pair`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            repo.updateIfChanged(task(title = "same"), newTitle = "same")
+
+            assertEquals("task.updatedIfChanged", kit.sink.last()!!.action)
+            assertTrue(kit.sink.last()!!.changes.isEmpty())
+        }
+    }
+
+    @Test
+    fun `onlyIfChanged emits a changed pair`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            repo.updateIfChanged(task(title = "old"), newTitle = "new")
+
+            val change = kit.sink.last()!!.changes.single()
+            assertEquals("title", change.field)
+            assertEquals("old", change.before)
+            assertEquals("new", change.after)
+        }
+    }
+
+    @Test
+    fun `autoChanges diffs same-typed parameter pair and emits only changed fields`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            val old = Task(41, "old", priority = 1, TaskStatus.OPEN, emptyList())
+            val updated = Task(42, "new", priority = 2, TaskStatus.OPEN, emptyList())
+            repo.autoUpdate(old, updated)
+
+            val event = kit.sink.last()!!
+            assertEquals("42", event.entityId) // the after object is the current entity
+            val changes = event.changes
+            assertEquals(listOf("id", "priority", "title"), changes.map { it.field })
+            assertEquals(listOf(41L, 1, "old"), changes.map { it.before })
+            assertEquals(listOf(42L, 2, "new"), changes.map { it.after })
+        }
+    }
+
+    @Test
+    fun `autoChanges infers before from parameter and after from result`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            repo.autoSave(task(id = 41, title = "draft"))
+
+            val event = kit.sink.last()!!
+            assertEquals("42", event.entityId) // the generated id comes from the result
+            val changes = event.changes
+            assertEquals(listOf("id", "title"), changes.map { it.field })
+            assertEquals(41L, changes[0].before)
+            assertEquals(42L, changes[0].after)
+            assertEquals("draft", changes[1].before)
+            assertEquals("saved draft", changes[1].after)
+        }
+    }
+
+    @Test
+    fun `explicit changes win over auto capture for the same field`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            val old = Task(42, "same", priority = 1, TaskStatus.OPEN, emptyList())
+            val updated = Task(42, "same", priority = 3, TaskStatus.OPEN, emptyList())
+            repo.autoUpdateWithExplicit(old, updated)
+
+            val changes = kit.sink.last()!!.changes
+            assertEquals(listOf("title", "priority"), changes.map { it.field })
+            assertEquals("same", changes[0].before)
+            assertEquals("same", changes[0].after)
+            assertEquals(1, changes[1].before)
+            assertEquals(3, changes[1].after)
+        }
+    }
+
+    @Test
+    fun `autoChanges skips sensitive excluded and risky-named fields`() = runTest {
+        val kit = TestKit.create()
+        kit.logger.use {
+            val repo = InMemoryChangeTrackingRepo().logged(kit.logger)
+            repo.renameAccount(
+                Account(7, "Ada", "free", "old@example.com", "old note", "old-token"),
+                Account(7, "Ada Lovelace", "pro", "new@example.com", "new note", "new-token"),
+            )
+
+            val changes = kit.sink.last()!!.changes
+            assertEquals(listOf("name", "plan"), changes.map { it.field })
+            assertEquals(listOf<Any>("Ada", "free"), changes.map { it.before })
+            assertEquals(listOf<Any>("Ada Lovelace", "pro"), changes.map { it.after })
         }
     }
 

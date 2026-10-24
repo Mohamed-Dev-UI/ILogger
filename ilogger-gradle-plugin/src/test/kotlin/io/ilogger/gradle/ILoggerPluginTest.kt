@@ -56,6 +56,7 @@ class ILoggerPluginTest {
                     "ilogger.suppress",
                     "ilogger.require-actor",
                     "ilogger.sink-categories",
+                    "ilogger.auto-changes",
                 )) {
                     println("ILG:" + key + "=" + args[key])
                 }
@@ -81,6 +82,7 @@ class ILoggerPluginTest {
                 requireActor.set(true)
                 sinkCategories.add("audit")
                 sinkCategories.add("security")
+                autoChanges.set(true)
             }
 
             $printArgumentsTask
@@ -97,6 +99,7 @@ class ILoggerPluginTest {
         assertTrue(output, output.contains("ILG:ilogger.suppress=ILG035,ILG061"))
         assertTrue(output, output.contains("ILG:ilogger.require-actor=true"))
         assertTrue(output, output.contains("ILG:ilogger.sink-categories=audit,security"))
+        assertTrue(output, output.contains("ILG:ilogger.auto-changes=all"))
     }
 
     @Test
@@ -119,6 +122,7 @@ class ILoggerPluginTest {
         assertTrue(output, output.contains("ILG:ilogger.suppress="))
         assertTrue(output, output.contains("ILG:ilogger.require-actor=false"))
         assertTrue(output, output.contains("ILG:ilogger.sink-categories="))
+        assertTrue(output, output.contains("ILG:ilogger.auto-changes=off"))
     }
 
     @Test

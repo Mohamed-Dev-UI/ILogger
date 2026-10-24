@@ -61,6 +61,8 @@ internal class ResolvedChange(
     val field: String,
     val before: ResolvedExpr,
     val after: ResolvedExpr,
+    /** Omit the field from the event when both values are equal. */
+    val onlyIfChanged: Boolean = false,
 )
 
 internal class ParameterModel(

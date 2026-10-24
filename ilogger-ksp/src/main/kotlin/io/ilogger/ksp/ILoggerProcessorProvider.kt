@@ -122,6 +122,8 @@ internal class ILoggerProcessor(
             ?.filter { it.isNotEmpty() }
             ?.toSet()
             ?: emptySet()
+        val autoChangesOption = environment.options["ilogger.auto-changes"]?.trim()?.lowercase()
+        val autoChangesDefault = autoChangesOption == "all" || autoChangesOption == "true"
 
         val deferred = LinkedHashSet<KSAnnotated>()
 
@@ -144,6 +146,7 @@ internal class ILoggerProcessor(
             domainPackages = domainPackages,
             requireActor = requireActor,
             sinkCategories = sinkCategories,
+            autoChangesDefault = autoChangesDefault,
         )
 
         // Registries first: the same round's @Log usages are checked against them.

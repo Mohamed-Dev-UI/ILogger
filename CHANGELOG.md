@@ -7,6 +7,27 @@ remain stable within a major version.
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic change capture**: `@Log(autoChanges = AutoChanges.ALL)` diffs
+  every eligible entity property and records only the fields that changed, in
+  addition to explicit `changes`. The before/after objects are inferred from
+  the signature — two parameters of the same entity type (first before,
+  second after) or one entity parameter plus an entity-typed result — with no
+  database read. Sensitive, `@LogExclude` and riskily named properties are
+  skipped, and explicit `LogChange` entries win for their field. The module
+  default comes from `ilogger.auto-changes` / `ilogger { autoChanges }`
+  (`AutoChanges.DEFAULT` inherits, `OFF` opts out, `ALL` requires an inferable
+  pair at compile time; inherited auto-capture silently skips unsupported
+  signatures so enabling it globally is safe).
+- **`LogChange.onlyIfChanged`**: when `true`, the before/after pair is omitted
+  from the event if both values are equal (structural equality; arrays are
+  compared element-by-element). Defaults to `false`, preserving the existing
+  always-record behavior that documents no-op operations.
+- **Entity-id inference for auto pairs**: the two-parameter shape infers the
+  event entity id from the "after" object, so `@Log(autoChanges = ALL)` on
+  `update(old, new)` needs no explicit `entityId`.
+
 ## [2.0.0] — 2026-10-23
 
 ### Changed
