@@ -23,7 +23,7 @@ serializationJson = "1.11.0"
 kotlinpoet = "2.2.0"
 room = "2.8.5"
 sqliteBundled = "2.7.1"
-ktor = "3.6.0"
+ktor = "3.6.1"
 # Logging bridges (G-32). SLF4J 2.x fluent API is used for key/value context;
 # Logback 1.5 is the reference inbound appender host. Both are opt-in: the
 # bridge modules compile against them without forcing them onto consumers.
