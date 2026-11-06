@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.4.21"
-ksp = "2.3.12"
+ksp = "2.3.13"
 junit = "4.13.2"
 vanniktech = "0.37.0"
 
