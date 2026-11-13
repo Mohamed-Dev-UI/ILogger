@@ -41,7 +41,7 @@ koin = "4.2.2"
 # Quality gates (G-42): coverage, published-API compatibility, API docs.
 kover = "0.9.11"
 bcv = "0.18.2"
-dokka = "2.2.0"
+dokka = "2.3.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
