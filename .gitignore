@@ -24,3 +24,5 @@ Thumbs.db
 # ── misc ──────────────────────────────────────────────────────────────────
 *.log
 *.hprof
+# Local agent/tool attachments; never part of the build.
+.cloud-attachments/

@@ -1,5 +1,6 @@
 package io.ilogger.android
 
+import android.annotation.SuppressLint
 import android.content.Context
 import io.ilogger.core.LogEvent
 import io.ilogger.core.LogSink
@@ -25,6 +26,10 @@ import kotlinx.coroutines.withContext
  *
  * Files default to `<filesDir>/ilogger/ilogger.jsonl`; the JSONL format is
  * readable by `JsonEventCodec` consumers and by standard line tooling.
+ *
+ * On Android 23-25 this sink needs core library desugaring in the consuming
+ * app, because [TextFileSink] is built on `java.nio.file` (API 26). The rest
+ * of `ilogger-android` works on API 23 without desugaring.
  */
 public class AndroidFileSink internal constructor(
     private val delegate: TextFileSink,
@@ -77,7 +82,13 @@ public class AndroidFileSink internal constructor(
             fsyncEveryWrite = fsyncEveryWrite,
         )
 
-        /** Creates a sink for an explicit file (tests, custom storage locations). */
+        /**
+         * Creates a sink for an explicit file (tests, custom storage locations).
+         *
+         * `File.toPath()` is API 26; apps with `minSdk` below 26 must enable
+         * core library desugaring to use this sink.
+         */
+        @SuppressLint("NewApi")
         @OptIn(ExperimentalCoroutinesApi::class)
         public fun create(
             file: File,

@@ -5,7 +5,7 @@ All notable changes to ILogger. Format follows
 [SemVer](https://semver.org/) — the Kotlin DSL surface and artifact layout
 remain stable within a major version.
 
-## [Unreleased]
+## [2.1.0] — 2026-11-22
 
 ### Added
 
@@ -28,8 +28,23 @@ remain stable within a major version.
   event entity id from the "after" object, so `@Log(autoChanges = ALL)` on
   `update(old, new)` needs no explicit `entityId`.
 
+### Changed
+
+- **Android floor lowered to API 23**: `ilogger-android` and the reference app
+  now declare `minSdk = 23`. The default install path (Logcat, crash buffer,
+  lifecycle flush) works without desugaring; `file(...)`/`AndroidFileSink` use
+  `java.nio.file` and therefore need core library desugaring on API 23-25
+  (documented in docs/28 and docs/38).
+- **Dependency refresh**: Kotlin Gradle plugin 2.4.21, OkHttp 5.5.0 (tests),
+  SLF4J 2.0.20, OpenTelemetry 1.67.0, Hilt 2.60.1, the AndroidX group, and the
+  GitHub Actions majors.
+- **Roadmap**: `GOALS.md` rewritten for the 2.1-3.0 plan; the stale minSdk
+  claim is gone.
+
 ### Fixed
 
+- **Reference app on API 23-25**: adaptive launcher icons moved to
+  `mipmap-anydpi-v26`, and core library desugaring is enabled for `java.time`.
 - **Benchmark budget gate no longer fails on a single noisy phase**: hosted
   runners can sustain contention across an entire measurement phase, so one
   inflated phase was enough to redden CI. `BudgetGateTest` now scores each path
@@ -612,6 +627,7 @@ First production release.
   tag-driven release workflow (GitHub Packages + release artifacts);
   Apache-2.0; README + 25-topic documentation set.
 
+[2.1.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v2.1.0
 [2.0.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v2.0.0
 [1.0.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v1.0.0
 [0.1.0]: https://github.com/Mohamed-Dev-UI/ILogger/releases/tag/v0.1.0

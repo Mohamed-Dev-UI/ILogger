@@ -13,7 +13,7 @@ import org.gradle.process.CommandLineArgumentProvider
  *
  * A single declaration is enough:
  * ```kotlin
- * plugins { id("io.github.mohamed-dev-ui.ilogger") version "2.0.0" }
+ * plugins { id("io.github.mohamed-dev-ui.ilogger") version "2.1.0" }
  * ```
  */
 public class ILoggerPlugin : Plugin<Project> {

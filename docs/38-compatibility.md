@@ -1,6 +1,6 @@
 # 38. Compatibility matrix
 
-ILogger 2.0.0 is built and tested with the versions below. “Tested” means CI
+ILogger 2.1.0 is built and tested with the versions below. “Tested” means CI
 compiles, runs the test suite and (for examples) executes the consumer with
 that version. Newer patch/minor versions usually work, but are not claimed
 until they are in this table.
@@ -16,7 +16,7 @@ until they are in this table.
 | JDK | 17 | `jvmToolchain(17)`; all published jars are Java 17 bytecode |
 | Android Gradle Plugin | 9.4.1 | `ilogger-android` and the reference app |
 | Android compileSdk | 37 | |
-| Android minSdk | 28 | Android consumers of every JVM artifact |
+| Android minSdk | 23 | Android consumers of every JVM artifact; file sinks on API 23-25 require core library desugaring |
 | JUnit | 4.13.2 | `ilogger-testing` exposes JUnit 4 types (`LogSinkConformance`) |
 
 ## Runtime libraries exposed to consumers
@@ -33,12 +33,12 @@ until they are in this table.
 | SQLite bundled | 2.7.1 | CLI runtime, Room tests | `ilogger-cli` reads Room files; not a library dependency |
 | OkHttp (tests only) | 5.5.0 | test | MockWebServer for `ilogger-remote` |
 
-The BOM (`io.github.mohamed-dev-ui:ilogger-bom:2.0.0`) aligns every published
+The BOM (`io.github.mohamed-dev-ui:ilogger-bom:2.1.0`) aligns every published
 ILogger module; it does not constrain third-party libraries.
 
 ## Artifact / platform matrix
 
-| Artifact | Kind | JVM 17 | Android 28+ | Non-JVM KMP |
+| Artifact | Kind | JVM 17 | Android 23+ | Non-JVM KMP |
 |---|---|:---:|:---:|:---:|
 | `ilogger-annotations` | jar | ✅ | ✅ | planned v2.0 |
 | `ilogger-core` | jar | ✅ | ✅ | planned v2.0 |

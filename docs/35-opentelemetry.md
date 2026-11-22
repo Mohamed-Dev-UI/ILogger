@@ -24,7 +24,7 @@ dependencies {
     // Only for the "events as spans" export or the metrics providers below:
     implementation("io.opentelemetry:opentelemetry-sdk")
 
-    implementation("io.github.mohamed-dev-ui:ilogger-otel:2.0.0")
+    implementation("io.github.mohamed-dev-ui:ilogger-otel:2.1.0")
 }
 ```
 

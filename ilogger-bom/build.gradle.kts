@@ -7,7 +7,7 @@ plugins {
  * Aligns every published ILogger artifact to one version:
  *
  * ```kotlin
- * implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
+ * implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0"))
  * implementation("io.github.mohamed-dev-ui:ilogger-core")
  * ```
  */

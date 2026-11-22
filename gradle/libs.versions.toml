@@ -3,6 +3,9 @@ agp = "9.4.1"
 kotlin = "2.2.10"
 ksp = "2.3.12"
 coreKtx = "1.19.1"
+# Backports java.time/java.nio.file to API 23-25. Required by the demo app and
+# by consumers that use file sinks below API 26 (see docs/28 and docs/38).
+desugarJdkLibs = "2.1.5"
 junit = "4.13.2"
 junitVersion = "1.1.5"
 # The runner is packaged into the androidTest APK that declares
@@ -45,6 +48,7 @@ dokka = "2.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTestRunner" }

@@ -13,10 +13,10 @@ android {
 
     defaultConfig {
         applicationId = "com.mohamed.dev.ui.ilogger"
-        minSdk = 28
+        minSdk = 23
         targetSdk = 37
-        versionCode = 3
-        versionName = "2.0.0"
+        versionCode = 4
+        versionName = "2.1.0"
 
         // Boots HiltTestApplication; production modules still form the graph.
         testInstrumentationRunner = "com.mohamed.dev.ui.ilogger.logging.ILoggerTestRunner"
@@ -31,6 +31,7 @@ android {
         }
     }
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -65,6 +66,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

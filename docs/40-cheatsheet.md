@@ -9,7 +9,7 @@ plugins { alias(libs.plugins.ilogger) }        // KSP + runtime + processor
 ilogger { strict.set(true) }                   // app modules: fail on ambiguity
 
 dependencies {
-    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
+    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0"))
     implementation("io.github.mohamed-dev-ui:ilogger-serialization")
     implementation("io.github.mohamed-dev-ui:ilogger-room")        // optional
     implementation("io.github.mohamed-dev-ui:ilogger-android")     // Android

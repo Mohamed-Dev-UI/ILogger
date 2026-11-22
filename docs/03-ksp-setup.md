@@ -18,7 +18,7 @@ One declaration replaces the plugin + three dependencies:
 ```kotlin
 // module build.gradle.kts — JVM or Android
 plugins {
-    id("io.github.mohamed-dev-ui.ilogger") version "2.0.0"
+    id("io.github.mohamed-dev-ui.ilogger") version "2.1.0"
 }
 ```
 
@@ -107,7 +107,7 @@ optional integrations:
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
+    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0"))
     implementation("io.github.mohamed-dev-ui:ilogger-core")
     implementation("io.github.mohamed-dev-ui:ilogger-testing")
     implementation("io.github.mohamed-dev-ui:ilogger-room")

@@ -9,7 +9,7 @@ surface onto a single page.
 ```kotlin
 // build.gradle.kts — the plugin adds KSP, the runtime, annotations and processor
 plugins {
-    id("io.github.mohamed-dev-ui.ilogger") version "2.0.0"
+    id("io.github.mohamed-dev-ui.ilogger") version "2.1.0"
 }
 ilogger { strict.set(true) }   // fail the build on instrumentation mistakes
 ```
@@ -68,7 +68,7 @@ processor at the same version:
 ```toml
 # gradle/libs.versions.toml
 [versions]
-ilogger = "2.0.0"
+ilogger = "2.1.0"
 
 [plugins]
 ilogger = { id = "io.github.mohamed-dev-ui.ilogger", version.ref = "ilogger" }
@@ -113,9 +113,9 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 [libraries]
-ilogger-annotations = { group = "io.github.mohamed-dev-ui", name = "ilogger-annotations", version = "2.0.0" }
-ilogger-core = { group = "io.github.mohamed-dev-ui", name = "ilogger-core", version = "2.0.0" }
-ilogger-ksp = { group = "io.github.mohamed-dev-ui", name = "ilogger-ksp", version = "2.0.0" }
+ilogger-annotations = { group = "io.github.mohamed-dev-ui", name = "ilogger-annotations", version = "2.1.0" }
+ilogger-core = { group = "io.github.mohamed-dev-ui", name = "ilogger-core", version = "2.1.0" }
+ilogger-ksp = { group = "io.github.mohamed-dev-ui", name = "ilogger-ksp", version = "2.1.0" }
 ```
 
 ```kotlin
@@ -133,7 +133,7 @@ dependencies {
 
 </details>
 
-Use `platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0")` to align the
+Use `platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0")` to align the
 optional modules (`testing`, `room`, `serialization`, `ktor`) without repeating
 versions. Setup details and processor options: [03-ksp-setup.md](03-ksp-setup.md).
 

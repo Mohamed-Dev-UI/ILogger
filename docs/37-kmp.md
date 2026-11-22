@@ -1,14 +1,14 @@
 # 37. Kotlin Multiplatform: current support and strategy
 
 **Bottom line: ILogger 1.x ships JVM 17 artifacts.** They run on the JVM
-(servers, CLI tools, tests) and on Android (API 28+). iOS, JS, Wasm and Kotlin
+(servers, CLI tools, tests) and on Android (API 23+). iOS, JS, Wasm and Kotlin
 Native targets are **not published yet**; the multiplatform source split is
 tracked as G-27 and scheduled for v2.0. This page explains what works today,
 how to structure a KMP application around that limit, and what will change.
 
 ## Support matrix
 
-| Artifact | JVM 17 | Android 28+ | iOS / JS / Native |
+| Artifact | JVM 17 | Android 23+ | iOS / JS / Native |
 |---|:---:|:---:|:---:|
 | `ilogger-annotations` | ✅ | ✅ | — (planned v2.0) |
 | `ilogger-core` | ✅ | ✅ | — (planned v2.0) |
@@ -24,7 +24,7 @@ how to structure a KMP application around that limit, and what will change.
 | `ilogger-cli` (application) | ✅ | — | — |
 
 “Android ✅” means the JVM artifact is consumable from Android source sets
-(`minSdk 28`, Java 17 bytecode); `ilogger-android` is the Android-specific
+(`minSdk 23`, Java 17 bytecode); `ilogger-android` is the Android-specific
 module ([28](28-android-module.md)).
 
 ## Why the artifacts are JVM-only today
@@ -92,11 +92,11 @@ class CloseTask(private val audit: AuditSink) {
 ```kotlin
 // jvmMain / androidMain dependencies
 dependencies {
-    implementation("io.github.mohamed-dev-ui:ilogger-core:2.0.0")
-    implementation("io.github.mohamed-dev-ui:ilogger-serialization:2.0.0")
+    implementation("io.github.mohamed-dev-ui:ilogger-core:2.1.0")
+    implementation("io.github.mohamed-dev-ui:ilogger-serialization:2.1.0")
     // KSP + annotations only in the JVM-facing source set
-    implementation("io.github.mohamed-dev-ui:ilogger-annotations:2.0.0")
-    ksp("io.github.mohamed-dev-ui:ilogger-ksp:2.0.0")
+    implementation("io.github.mohamed-dev-ui:ilogger-annotations:2.1.0")
+    ksp("io.github.mohamed-dev-ui:ilogger-ksp:2.1.0")
 }
 ```
 

@@ -83,7 +83,7 @@ result and rethrows failures unchanged.
 ```toml
 # gradle/libs.versions.toml
 [versions]
-ilogger = "2.0.0"
+ilogger = "2.1.0"
 
 [plugins]
 ilogger = { id = "io.github.mohamed-dev-ui.ilogger", version.ref = "ilogger" }
@@ -161,7 +161,7 @@ version; the BOM aligns them without repeating versions.
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
+    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0"))
 
     implementation("io.github.mohamed-dev-ui:ilogger-core")
     implementation("io.github.mohamed-dev-ui:ilogger-annotations")
@@ -207,7 +207,7 @@ distribution with `./gradlew :ilogger-cli:installDist`; see
 | Kotlin / KSP | 2.2.10 / 2.3.12 |
 | Gradle | 9.6.0 |
 | JDK | 17 (all jars target Java 17 bytecode) |
-| Android | minSdk 28, compileSdk 37 |
+| Android | minSdk 23, compileSdk 37 (file sinks on API 23-25 need core library desugaring) |
 
 JVM and Android are fully supported. Non-JVM Kotlin Multiplatform targets are
 not published yet. Newer toolchain versions usually work but are not claimed
@@ -295,8 +295,8 @@ Publishing a release is driven by a version tag; the workflow runs the full JVM
 suite, publishes to Maven Central and GitHub Packages, and creates the release:
 
 ```bash
-git tag -a v2.0.0 -m "ILogger v2.0.0"
-git push origin v2.0.0
+git tag -a v2.1.0 -m "ILogger v2.1.0"
+git push origin v2.1.0
 ```
 
 <details>

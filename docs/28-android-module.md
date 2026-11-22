@@ -7,16 +7,34 @@ shipping. The reference app uses this module instead of app-local bridges.
 
 ```kotlin
 dependencies {
-    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.0.0"))
+    implementation(platform("io.github.mohamed-dev-ui:ilogger-bom:2.1.0"))
     implementation("io.github.mohamed-dev-ui:ilogger-android")
     // Optional: only for LogShippingWorker
     implementation("androidx.work:work-runtime-ktx:2.11.2")
 }
 ```
 
-The module requires `minSdk 28` and exposes `ilogger-core` plus
+The module requires `minSdk 23` and exposes `ilogger-core` plus
 `androidx.lifecycle:lifecycle-process` as API dependencies. WorkManager is
 **compile-only**: apps that never ship logs remotely do not depend on it.
+
+`file(...)` and `AndroidFileSink` wrap `TextFileSink`, which uses
+`java.nio.file` (API 26). On API 23-25, enable core library desugaring in the
+app:
+
+```kotlin
+android {
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+    }
+}
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+```
+
+The default `install` path (Logcat, crash buffer, lifecycle flush) needs no
+desugaring and runs on API 23.
 
 ## One-line setup
 
