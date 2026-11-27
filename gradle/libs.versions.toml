@@ -1,7 +1,7 @@
 [versions]
 agp = "9.4.1"
-kotlin = "2.2.10"
-ksp = "2.3.12"
+kotlin = "2.4.21"
+ksp = "2.3.14"
 coreKtx = "1.19.1"
 # Backports java.time/java.nio.file to API 23-25. Required by the demo app and
 # by consumers that use file sinks below API 26 (see docs/28 and docs/38).
